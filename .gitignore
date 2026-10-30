@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Environment and secrets
+.env
+.env.local
+
+# Hardhat
+artifacts/
+cache/
+coverage/
+coverage.json
+typechain-types/
+
+# Web (Vite/React)
+web/node_modules/
+web/dist/
+
+# Simulator
+simulator/node_modules/
+simulator/data/*.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Team planning docs (not part of the project deliverable repo)
+PharmaTrace_Team_Work_Plan.pdf
+Group15_2026FallB_CSE 540_PharmaTrace_Project Proposal_and_TeamContract*.pdf
