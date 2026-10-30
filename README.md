@@ -22,23 +22,28 @@ automatically. A React web app serves each role plus a public verify page for co
 
 ## Roles, registration, access control and deployment (Ancy)
 
-_To be filled in as A4-A11 land._
+_This section will describe the role-based access control, batch registration, and deployment
+setup as that work is completed._
 
 ## Status transitions, quarantine/recall and regulator workflow (Shreyanshi)
 
-_To be filled in as S1-S7 land._
+_This section will describe the status state machine, quarantine/recall logic, and regulator
+approval workflow as that work is completed._
 
 ## Custody transfers and provenance history (Nandana)
 
-_To be filled in as N1-N7 land._
+_This section will describe the two-step custody transfer process and provenance history
+tracking as that work is completed._
 
 ## Temperature simulator and oracle integration (Barath)
 
-_To be filled in as B1-B7 land._
+_This section will describe the temperature sensor simulator and oracle integration as that
+work is completed._
 
 ## Public verification UI and system integration (Vigneshkumar)
 
-_To be filled in as V1-V8 land._
+_This section will describe the public verification page and system integration as that work
+is completed._
 
 ## How to run
 
