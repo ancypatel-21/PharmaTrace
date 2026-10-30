@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {Status, Batch} from "../PharmaTypes.sol";
+import {Status, Batch, TempSummary} from "../PharmaTypes.sol";
 
 /// @title IProvenanceTracker
 /// @notice Public interface for the PharmaTrace ProvenanceTracker contract.
@@ -93,4 +93,41 @@ interface IProvenanceTracker {
     // Added in V1 (interface + NatSpec): read-only views for the public verify page,
     // e.g. an aggregated getBatchSummary(id) if it simplifies the UI.
     // ---------------------------------------------------------------------
+
+    /// @notice Everything the public verify page shows for a batch, in a single call.
+    /// @dev Aggregates getBatch, getLatestTemperature and the approver recorded by
+    ///      approveBatch (S4) so a consumer's phone makes one RPC request instead of three.
+    ///      Does not revert for unknown IDs: returns exists = false and zero values so the
+    ///      page can show "Not found" without catching a revert. Custody history is not
+    ///      included; the page reads it through getCustodyHistory (N3) and events.
+    /// @param batchId The batch ID, as printed in the batch QR code (/verify/:id).
+    /// @return exists False if no batch has this ID; all other values are then zero.
+    /// @return batch The stored batch: product, lot, expiry, manufacturer, current
+    ///         custodian, status, approved flag and certificate hash.
+    /// @return latestTemperature The most recent oracle temperature window, or a zero
+    ///         struct (reportedAt == 0) if no report has been made yet.
+    /// @return temperatureReportCount Number of temperature reports received for the batch.
+    /// @return approvedBy The Regulator that approved the batch, or address(0) if not approved.
+    function getBatchSummary(uint256 batchId)
+        external
+        view
+        returns (
+            bool exists,
+            Batch memory batch,
+            TempSummary memory latestTemperature,
+            uint256 temperatureReportCount,
+            address approvedBy
+        );
+
+    /// @notice The latest temperature summary reported by the Oracle for a batch.
+    /// @dev Reads the TempSummary and report count stored by OracleModule (B3). Full
+    ///      report history is in TemperatureReported / TemperatureExcursion events.
+    ///      Temperatures are tenths of a degree Celsius (80 = 8.0 C).
+    /// @param batchId The batch to read.
+    /// @return summary The most recent window, or a zero struct (reportedAt == 0) if none.
+    /// @return reportCount Number of temperature reports received for the batch.
+    function getLatestTemperature(uint256 batchId)
+        external
+        view
+        returns (TempSummary memory summary, uint256 reportCount);
 }
