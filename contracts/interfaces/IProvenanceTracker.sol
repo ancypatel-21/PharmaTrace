@@ -279,7 +279,6 @@ interface IProvenanceTracker {
     // Added in V1 (interface + NatSpec): read-only views for the public verify page,
     // e.g. an aggregated getBatchSummary(id) if it simplifies the UI.
     // ---------------------------------------------------------------------
-}
 
     /// @notice Everything the public verify page shows for a batch, in a single call.
     /// @dev Aggregates getBatch, getLatestTemperature and the approver recorded by
