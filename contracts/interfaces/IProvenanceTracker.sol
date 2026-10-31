@@ -81,7 +81,105 @@ interface IProvenanceTracker {
     // Nandana — custody transfer and provenance history
     // Added in N1 (interface + NatSpec): initiateTransfer, acceptTransfer,
     // optional cancelTransfer, getCustodyHistory.
+    //
+    // Every handoff is two-step: the current custodian sends (initiateTransfer), then the
+    // recipient signs for it (acceptTransfer). Custody only changes once both sides have
+    // signed. Implemented in CustodyModule (N2, N3).
+    //
+    // Allowed hops (sender role -> recipient role):
+    //
+    //   Manufacturer -> Distributor or Carrier
+    //   Distributor  -> Carrier or Pharmacy
+    //   Carrier      -> Distributor or Pharmacy
+    //   Pharmacy     -> none (final holder; the batch ends as Dispensed, see markDispensed)
+    //
+    // Roles are checked with AccessRoles (A4). If an account holds more than one role, the
+    // hop is allowed when any role it holds permits it.
     // ---------------------------------------------------------------------
+
+    /// @notice One completed handoff in a batch's custody history.
+    /// @dev Declared here rather than in PharmaTypes.sol so the frozen shared types stay
+    ///      unchanged. Kept small on purpose: one record per accepted handoff, while the
+    ///      full detail (initiation time, cancellations) lives in events. This storage vs.
+    ///      events trade-off is measured in the gas report (A10).
+    struct CustodyRecord {
+        address from; // custodian who sent the batch
+        address to; // custodian who accepted it
+        uint64 timestamp; // block time of the acceptance
+        Status statusAfter; // batch status right after the handoff (Received)
+    }
+
+    /// @notice The sender withdrew a pending handoff before the recipient accepted it.
+    /// @dev Only emitted if the team keeps cancelTransfer (vote at the weekly meeting).
+    event CustodyTransferCancelled(uint256 indexed batchId, address indexed from, address indexed to);
+
+    /// @notice Caller is not the batch's current custodian.
+    error NotCurrentCustodian(uint256 batchId, address caller);
+
+    /// @notice Recipient is the zero address, the sender itself, or does not hold a role
+    ///         that the sender's role may hand off to (see the hop table above).
+    error InvalidNextHop(uint256 batchId, address to);
+
+    /// @notice The batch already has a handoff waiting to be accepted.
+    error TransferAlreadyPending(uint256 batchId, address pendingCustodian);
+
+    /// @notice The batch has no handoff waiting to be accepted or cancelled.
+    error NoPendingTransfer(uint256 batchId);
+
+    /// @notice Caller is not the recipient named in the pending handoff.
+    error NotPendingCustodian(uint256 batchId, address caller);
+
+    /// @notice Starts a handoff: the current custodian names the next custodian.
+    /// @dev Requirements:
+    ///      - the batch exists (A5) and is not Quarantined, Recalled or Dispensed
+    ///        (Shreyanshi's notFrozen modifier, S3);
+    ///      - msg.sender is the batch's currentCustodian;
+    ///      - `to` holds a role the sender's role may hand off to (hop table above);
+    ///      - no other handoff is pending (pendingCustodian is address(0)).
+    ///      Effects: sets pendingCustodian = to and moves the status to InTransit through
+    ///      _changeStatus (S2), which allows this from Created, Received or Stored.
+    ///      Emits CustodyTransferInitiated and StatusChanged.
+    ///      If the team votes that a batch must be approved before its first shipment (S4),
+    ///      this function also requires batch.approved.
+    /// @param batchId The batch being handed off.
+    /// @param to The next custodian; must accept with acceptTransfer.
+    function initiateTransfer(uint256 batchId, address to) external;
+
+    /// @notice Completes a handoff: the named recipient signs for the batch.
+    /// @dev Requirements: a handoff is pending and msg.sender is its pendingCustodian.
+    ///      A batch quarantined while in transit (e.g. by an oracle excursion) cannot be
+    ///      accepted until a Regulator releases it.
+    ///      Effects: currentCustodian = msg.sender, pendingCustodian cleared, status moves
+    ///      to Received through _changeStatus (S2), and a CustodyRecord is appended to the
+    ///      batch's history (N3).
+    ///      Emits CustodyTransferAccepted(batchId, previous custodian, msg.sender) and
+    ///      StatusChanged.
+    /// @param batchId The batch being accepted.
+    function acceptTransfer(uint256 batchId) external;
+
+    /// @notice Withdraws a pending handoff before the recipient accepts it.
+    /// @dev Optional, pending the team vote. Requirements: a handoff is pending and
+    ///      msg.sender is still the currentCustodian. Effects: pendingCustodian cleared and
+    ///      the status returns to what it was before initiateTransfer. That reverse move
+    ///      (InTransit -> Created/Received/Stored) is not in the S2 transition table yet and
+    ///      needs Shreyanshi's OK. Emits CustodyTransferCancelled and StatusChanged.
+    /// @param batchId The batch whose pending handoff is withdrawn.
+    function cancelTransfer(uint256 batchId) external;
+
+    /// @notice Full custody history of a batch, oldest handoff first.
+    /// @dev Contains only accepted handoffs; the first holder is batch.manufacturer from
+    ///      getBatch. Returns an empty array for a batch that has not been handed off yet
+    ///      or for an unknown ID (the verify page checks existence with getBatchSummary).
+    ///      Used by the custody timeline component (N6) and the public verify page (V3).
+    /// @param batchId The batch to read.
+    /// @return history Handoffs in the order they were accepted.
+    function getCustodyHistory(uint256 batchId) external view returns (CustodyRecord[] memory history);
+
+    /// @notice Number of accepted handoffs recorded for a batch.
+    /// @dev Lets the UI page through long histories without loading the whole array.
+    /// @param batchId The batch to read.
+    /// @return length Number of entries getCustodyHistory would return.
+    function getHistoryLength(uint256 batchId) external view returns (uint256 length);
 
     // ---------------------------------------------------------------------
     // Barath — oracle temperature reporting
