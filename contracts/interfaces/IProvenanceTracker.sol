@@ -77,6 +77,43 @@ interface IProvenanceTracker {
     // releaseQuarantine, recallBatch, approveBatch.
     // ---------------------------------------------------------------------
 
+    /// @notice Marks a received batch as stored.
+    /// @dev Intended to be called by the batch's current custodian.
+    /// @param batchId The unique identifier of the batch.
+    function markStored(uint256 batchId) external;
+
+    /// @notice Marks a stored batch as dispensed.
+    /// @dev Intended to be called by a Pharmacy that is the current custodian.
+    ///      Dispensed is a terminal status.
+    /// @param batchId The unique identifier of the batch.
+    function markDispensed(uint256 batchId) external;
+
+    /// @notice Quarantines a batch for a specified reason.
+    /// @dev Intended to be called by an authorized Regulator. The batch's status
+    ///      before quarantine is preserved so it can be restored if the quarantine
+    ///      is later released.
+    /// @param batchId The unique identifier of the batch.
+    /// @param reason The reason for quarantining the batch.
+    function quarantineBatch(uint256 batchId, string calldata reason) external;
+
+    /// @notice Releases a quarantined batch and restores its previous status.
+    /// @dev Intended to be called by an authorized Regulator.
+    /// @param batchId The unique identifier of the quarantined batch.
+    function releaseQuarantine(uint256 batchId) external;
+
+    /// @notice Recalls a batch for a specified reason.
+    /// @dev Intended to be called by an authorized Regulator. Recalled is a
+    ///      terminal status and no further status transitions are allowed.
+    /// @param batchId The unique identifier of the batch.
+    /// @param reason The reason for recalling the batch.
+    function recallBatch(uint256 batchId, string calldata reason) external;
+
+    /// @notice Approves a batch and anchors its certificate hash on-chain.
+    /// @dev Intended to be called by an authorized Regulator.
+    /// @param batchId The unique identifier of the batch.
+    /// @param certificateHash The cryptographic hash of the batch certificate.
+    function approveBatch(uint256 batchId, bytes32 certificateHash) external;
+
     // ---------------------------------------------------------------------
     // Nandana — custody transfer and provenance history
     // Added in N1 (interface + NatSpec): initiateTransfer, acceptTransfer,
