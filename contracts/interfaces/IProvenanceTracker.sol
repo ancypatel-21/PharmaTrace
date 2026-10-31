@@ -80,7 +80,7 @@ interface IProvenanceTracker {
     // ---------------------------------------------------------------------
     // Nandana — custody transfer and provenance history
     // Added in N1 (interface + NatSpec): initiateTransfer, acceptTransfer,
-    // optional cancelTransfer, getCustodyHistory.
+    // optional cancelTransfer, getCustodyHistory, getHistoryLength.
     //
     // Every handoff is two-step: the current custodian sends (initiateTransfer), then the
     // recipient signs for it (acceptTransfer). Custody only changes once both sides have
@@ -111,7 +111,11 @@ interface IProvenanceTracker {
 
     /// @notice The sender withdrew a pending handoff before the recipient accepted it.
     /// @dev Only emitted if the team keeps cancelTransfer (vote at the weekly meeting).
-    event CustodyTransferCancelled(uint256 indexed batchId, address indexed from, address indexed to);
+    event CustodyTransferCancelled(
+        uint256 indexed batchId,
+        address indexed from,
+        address indexed to
+    );
 
     /// @notice Caller is not the batch's current custodian.
     error NotCurrentCustodian(uint256 batchId, address caller);
@@ -146,9 +150,10 @@ interface IProvenanceTracker {
     function initiateTransfer(uint256 batchId, address to) external;
 
     /// @notice Completes a handoff: the named recipient signs for the batch.
-    /// @dev Requirements: a handoff is pending and msg.sender is its pendingCustodian.
-    ///      A batch quarantined while in transit (e.g. by an oracle excursion) cannot be
-    ///      accepted until a Regulator releases it.
+    /// @dev Requirements: a handoff is pending, msg.sender is its pendingCustodian, and the
+    ///      batch is not frozen (notFrozen, S3). A batch quarantined while in transit (e.g.
+    ///      by an oracle excursion) cannot be accepted until a Regulator releases it back
+    ///      to InTransit.
     ///      Effects: currentCustodian = msg.sender, pendingCustodian cleared, status moves
     ///      to Received through _changeStatus (S2), and a CustodyRecord is appended to the
     ///      batch's history (N3).
@@ -158,8 +163,10 @@ interface IProvenanceTracker {
     function acceptTransfer(uint256 batchId) external;
 
     /// @notice Withdraws a pending handoff before the recipient accepts it.
-    /// @dev Optional, pending the team vote. Requirements: a handoff is pending and
-    ///      msg.sender is still the currentCustodian. Effects: pendingCustodian cleared and
+    /// @dev Optional, pending the team vote. Requirements: a handoff is pending,
+    ///      msg.sender is still the currentCustodian, and the batch is not frozen
+    ///      (notFrozen, S3), so a quarantined batch stays with the Regulator's decision.
+    ///      Effects: pendingCustodian cleared and
     ///      the status returns to what it was before initiateTransfer. That reverse move
     ///      (InTransit -> Created/Received/Stored) is not in the S2 transition table yet and
     ///      needs Shreyanshi's OK. Emits CustodyTransferCancelled and StatusChanged.
@@ -173,10 +180,14 @@ interface IProvenanceTracker {
     ///      Used by the custody timeline component (N6) and the public verify page (V3).
     /// @param batchId The batch to read.
     /// @return history Handoffs in the order they were accepted.
-    function getCustodyHistory(uint256 batchId) external view returns (CustodyRecord[] memory history);
+    function getCustodyHistory(uint256 batchId)
+        external
+        view
+        returns (CustodyRecord[] memory history);
 
     /// @notice Number of accepted handoffs recorded for a batch.
-    /// @dev Lets the UI page through long histories without loading the whole array.
+    /// @dev Cheap count for the UI (e.g. "3 handoffs" on a batch list) without returning
+    ///      the whole history array.
     /// @param batchId The batch to read.
     /// @return length Number of entries getCustodyHistory would return.
     function getHistoryLength(uint256 batchId) external view returns (uint256 length);
