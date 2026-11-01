@@ -101,6 +101,18 @@ degree Celsius, e.g. 80 = 8.0 °C).
 - What the verify page reads and how it's displayed: [`docs/ui-data.md`](docs/ui-data.md).
 - Implementation (React app, verify page, e2e tests) lands in V2-V6.
 
+## Dependencies
+
+- [Node.js](https://nodejs.org/) 18+ and npm
+- [Hardhat](https://hardhat.org/) 2.29 (`hardhat`) with the [Hardhat Toolbox](https://hardhat.org/hardhat-runner/plugins/nomicfoundation-hardhat-toolbox) 5.0 (bundles `ethers` v6, `hardhat-gas-reporter`, `hardhat-verify`, Chai matchers, and network helpers)
+- [OpenZeppelin Contracts](https://docs.openzeppelin.com/contracts/5.x/) 5.6 (`@openzeppelin/contracts`) — `AccessControl` for role-based access
+- [solhint](https://protofire.github.io/solhint/) 6.2 and [prettier](https://prettier.io/) 3.9 with `prettier-plugin-solidity`, for linting and formatting
+- `dotenv`, to load `.env` into `hardhat.config.js`
+
+All of the above are pinned in [`package.json`](package.json); `npm install` installs the exact
+versions from [`package-lock.json`](package-lock.json). The web app and simulator will add their
+own `package.json` files under `web/` and `simulator/` as those commits land (V2, B2).
+
 ## How to run
 
 ```bash
