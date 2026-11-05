@@ -1,0 +1,995 @@
+{
+  "note": "MOCK: ABI compiled from contracts/interfaces/IProvenanceTracker.sol. No deployed address. Replaced by the real export from scripts/export-abi.js (A7).",
+  "network": "mock",
+  "chainId": 31337,
+  "address": null,
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        }
+      ],
+      "name": "InvalidNextHop",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        }
+      ],
+      "name": "NoPendingTransfer",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "NotCurrentCustodian",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "NotPendingCustodian",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "pendingCustodian",
+          "type": "address"
+        }
+      ],
+      "name": "TransferAlreadyPending",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "approvedBy",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "certificateHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "BatchApproved",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "enum Status",
+          "name": "previousStatus",
+          "type": "uint8"
+        }
+      ],
+      "name": "BatchQuarantined",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "name": "BatchRecalled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "manufacturer",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "lotNumber",
+          "type": "string"
+        }
+      ],
+      "name": "BatchRegistered",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        }
+      ],
+      "name": "CustodyTransferAccepted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        }
+      ],
+      "name": "CustodyTransferCancelled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        }
+      ],
+      "name": "CustodyTransferInitiated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "name": "ParticipantRegistered",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "enum Status",
+          "name": "restoredStatus",
+          "type": "uint8"
+        }
+      ],
+      "name": "QuarantineReleased",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "enum Status",
+          "name": "from",
+          "type": "uint8"
+        },
+        {
+          "indexed": false,
+          "internalType": "enum Status",
+          "name": "to",
+          "type": "uint8"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "actor",
+          "type": "address"
+        }
+      ],
+      "name": "StatusChanged",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "int16",
+          "name": "minTenthsC",
+          "type": "int16"
+        },
+        {
+          "indexed": false,
+          "internalType": "int16",
+          "name": "maxTenthsC",
+          "type": "int16"
+        }
+      ],
+      "name": "TemperatureExcursion",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "int16",
+          "name": "minTenthsC",
+          "type": "int16"
+        },
+        {
+          "indexed": false,
+          "internalType": "int16",
+          "name": "maxTenthsC",
+          "type": "int16"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "readingCount",
+          "type": "uint32"
+        }
+      ],
+      "name": "TemperatureReported",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        }
+      ],
+      "name": "acceptTransfer",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "certificateHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "approveBatch",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        }
+      ],
+      "name": "batchExists",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        }
+      ],
+      "name": "cancelTransfer",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getBatch",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "id",
+              "type": "uint256"
+            },
+            {
+              "internalType": "string",
+              "name": "productName",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "lotNumber",
+              "type": "string"
+            },
+            {
+              "internalType": "uint64",
+              "name": "expiryDate",
+              "type": "uint64"
+            },
+            {
+              "internalType": "address",
+              "name": "manufacturer",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "currentCustodian",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "pendingCustodian",
+              "type": "address"
+            },
+            {
+              "internalType": "enum Status",
+              "name": "status",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bool",
+              "name": "approved",
+              "type": "bool"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "certificateHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint64",
+              "name": "createdAt",
+              "type": "uint64"
+            }
+          ],
+          "internalType": "struct Batch",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getBatchSummary",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "exists",
+          "type": "bool"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "id",
+              "type": "uint256"
+            },
+            {
+              "internalType": "string",
+              "name": "productName",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "lotNumber",
+              "type": "string"
+            },
+            {
+              "internalType": "uint64",
+              "name": "expiryDate",
+              "type": "uint64"
+            },
+            {
+              "internalType": "address",
+              "name": "manufacturer",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "currentCustodian",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "pendingCustodian",
+              "type": "address"
+            },
+            {
+              "internalType": "enum Status",
+              "name": "status",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bool",
+              "name": "approved",
+              "type": "bool"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "certificateHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint64",
+              "name": "createdAt",
+              "type": "uint64"
+            }
+          ],
+          "internalType": "struct Batch",
+          "name": "batch",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "int16",
+              "name": "minTenthsC",
+              "type": "int16"
+            },
+            {
+              "internalType": "int16",
+              "name": "maxTenthsC",
+              "type": "int16"
+            },
+            {
+              "internalType": "uint32",
+              "name": "readingCount",
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint64",
+              "name": "windowStart",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "windowEnd",
+              "type": "uint64"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "readingsHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint64",
+              "name": "reportedAt",
+              "type": "uint64"
+            }
+          ],
+          "internalType": "struct TempSummary",
+          "name": "latestTemperature",
+          "type": "tuple"
+        },
+        {
+          "internalType": "uint256",
+          "name": "temperatureReportCount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "approvedBy",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getCustodyHistory",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "from",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "uint64",
+              "name": "timestamp",
+              "type": "uint64"
+            },
+            {
+              "internalType": "enum Status",
+              "name": "statusAfter",
+              "type": "uint8"
+            }
+          ],
+          "internalType": "struct IProvenanceTracker.CustodyRecord[]",
+          "name": "history",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getHistoryLength",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "length",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getLatestTemperature",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "int16",
+              "name": "minTenthsC",
+              "type": "int16"
+            },
+            {
+              "internalType": "int16",
+              "name": "maxTenthsC",
+              "type": "int16"
+            },
+            {
+              "internalType": "uint32",
+              "name": "readingCount",
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint64",
+              "name": "windowStart",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "windowEnd",
+              "type": "uint64"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "readingsHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint64",
+              "name": "reportedAt",
+              "type": "uint64"
+            }
+          ],
+          "internalType": "struct TempSummary",
+          "name": "summary",
+          "type": "tuple"
+        },
+        {
+          "internalType": "uint256",
+          "name": "reportCount",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        }
+      ],
+      "name": "initiateTransfer",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        }
+      ],
+      "name": "markDispensed",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        }
+      ],
+      "name": "markStored",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "name": "quarantineBatch",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "name": "recallBatch",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "productName",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "lotNumber",
+          "type": "string"
+        },
+        {
+          "internalType": "uint64",
+          "name": "expiryDate",
+          "type": "uint64"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "certificateHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "registerBatch",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "name": "registerParticipant",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        }
+      ],
+      "name": "releaseQuarantine",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "int16",
+          "name": "minTenthsC",
+          "type": "int16"
+        },
+        {
+          "internalType": "int16",
+          "name": "maxTenthsC",
+          "type": "int16"
+        },
+        {
+          "internalType": "uint32",
+          "name": "readingCount",
+          "type": "uint32"
+        },
+        {
+          "internalType": "uint64",
+          "name": "windowStart",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint64",
+          "name": "windowEnd",
+          "type": "uint64"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "readingsHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "reportTemperature",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "revokeParticipant",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "totalBatches",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]
+}
