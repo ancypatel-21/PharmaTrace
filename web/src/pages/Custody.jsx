@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { isAddress } from "ethers";
+import CustodyTimeline from "../components/CustodyTimeline.jsx";
 import RequireRole from "../components/RequireRole.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import { useWallet } from "../context/WalletContext.jsx";
@@ -133,7 +134,7 @@ function CustodyActions() {
           incoming.map((b) => {
             const inTransit = Number(b.status) === STATUS.InTransit;
             return (
-              <BatchRow key={b.id} batch={b} nameOf={nameOf}>
+              <BatchRow key={b.id} batch={b} nameOf={nameOf} directory={directory} refreshKey={refreshKey}>
                 <p>
                   Sent by <strong>{nameOf(b.currentCustodian)}</strong>. Accepting signs for the batch
                   and makes you its custodian.
@@ -166,7 +167,7 @@ function CustodyActions() {
           <p className="muted">You are not the custodian of any batch.</p>
         ) : (
           held.map((b) => (
-            <BatchRow key={b.id} batch={b} nameOf={nameOf}>
+            <BatchRow key={b.id} batch={b} nameOf={nameOf} directory={directory} refreshKey={refreshKey}>
               <HeldActions batch={b} roles={roles} recipients={recipients} nameOf={nameOf} busy={busy} send={send} />
             </BatchRow>
           ))
@@ -176,7 +177,8 @@ function CustodyActions() {
   );
 }
 
-function BatchRow({ batch, nameOf, children }) {
+function BatchRow({ batch, nameOf, directory, refreshKey, children }) {
+  const [showHistory, setShowHistory] = useState(false);
   return (
     <article className="card" style={{ marginBottom: 12 }} data-testid={`batch-${batch.id}`}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
@@ -189,6 +191,28 @@ function BatchRow({ batch, nameOf, children }) {
         Lot {batch.lotNumber} · expires {formatDate(batch.expiryDate)} · made by {nameOf(batch.manufacturer)}
       </p>
       {children}
+      <button
+        type="button"
+        aria-expanded={showHistory}
+        onClick={() => setShowHistory((v) => !v)}
+        style={{
+          display: "block",
+          marginTop: 8,
+          padding: 0,
+          border: 0,
+          background: "none",
+          color: "var(--primary)",
+          cursor: "pointer",
+          font: "inherit",
+        }}
+      >
+        {showHistory ? "Hide custody history" : "Show custody history"}
+      </button>
+      {showHistory && (
+        <div style={{ marginTop: 8 }}>
+          <CustodyTimeline batchId={batch.id} directory={directory} refreshKey={refreshKey} />
+        </div>
+      )}
     </article>
   );
 }
