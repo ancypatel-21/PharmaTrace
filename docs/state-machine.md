@@ -28,7 +28,7 @@ A batch can have one of the following statuses:
 | `Stored` | `Dispensed` | Pharmacy | The pharmacy dispenses the batch. `Dispensed` is a terminal status. |
 | Any non-terminal status | `Quarantined` | Regulator or authorized Oracle path | The batch is quarantined manually by a Regulator or automatically after a temperature excursion. |
 | `Quarantined` | Previous status | Regulator | The Regulator releases the quarantine and restores the status held immediately before quarantine. |
-| `Quarantined` | `Recalled` | Regulator | The Regulator recalls a quarantined batch. `Recalled` is a terminal status. |
+| `Quarantined` | `Recalled` | Regulator, or the batch's own Manufacturer | The batch is recalled. `Recalled` is a terminal status. |
 
 ## Quarantine Behavior
 
@@ -52,6 +52,12 @@ transaction, so `Recalled` is still only reachable from `Quarantined` and both
 moves appear as `StatusChanged` events. Any pending transfer is cleared.
 Quarantine and recall both require a non-empty reason, which the verify page
 shows.
+
+A Regulator can recall any batch. The Manufacturer that registered a batch can
+also recall that batch (most real drug recalls are started by the
+manufacturer), as long as it still holds the Manufacturer role. A Manufacturer
+cannot recall another manufacturer's batch, and only a Regulator can
+quarantine a batch or release a quarantine.
 
 ## Terminal States
 

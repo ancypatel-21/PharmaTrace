@@ -110,7 +110,7 @@ abstract contract StatusModule is BatchRegistry {
     }
 
     /// @notice Recalls a batch for a stated reason. Recalled is terminal.
-    /// @dev Caller must pass _canRecall (Regulator). Allowed from any non-terminal status:
+    /// @dev Caller must be a Regulator or the batch's own Manufacturer (_canRecall). Allowed from any non-terminal status:
     ///      a batch that is not already Quarantined is first moved to Quarantined and then
     ///      to Recalled in the same transaction, so the transition table keeps Recalled
     ///      reachable only from Quarantined. Both moves emit StatusChanged; BatchQuarantined
@@ -135,9 +135,13 @@ abstract contract StatusModule is BatchRegistry {
         emit BatchRecalled(batchId, reason);
     }
 
-    /// @dev Who may recall `batchId`: any Regulator.
-    function _canRecall(uint256, address caller) internal view virtual returns (bool) {
-        return hasRole(REGULATOR_ROLE, caller);
+    /// @dev Who may recall `batchId`: any Regulator, or the Manufacturer that registered the
+    ///      batch (most real drug recalls are started by the manufacturer). The manufacturer
+    ///      must still hold MANUFACTURER_ROLE, so a revoked manufacturer cannot recall.
+    ///      Only the Regulator can quarantine or release a batch.
+    function _canRecall(uint256 batchId, address caller) internal view virtual returns (bool) {
+        if (hasRole(REGULATOR_ROLE, caller)) return true;
+        return _batches[batchId].manufacturer == caller && hasRole(MANUFACTURER_ROLE, caller);
     }
 
     /// @notice Quarantines a batch, remembering its prior status for later release.

@@ -52,7 +52,7 @@ access table required by the course spec.
 | `Stored` | `Dispensed` | Pharmacy custodian dispenses (terminal) |
 | any non-terminal | `Quarantined` | Regulator, or automatically on a temperature excursion |
 | `Quarantined` | previous status | Regulator releases the quarantine |
-| `Quarantined` | `Recalled` | Regulator recalls the batch (terminal) |
+| `Quarantined` | `Recalled` | Regulator, or the batch's own Manufacturer, recalls the batch (terminal) |
 
 Full detail, including quarantine and terminal-state behavior: [`docs/state-machine.md`](docs/state-machine.md).
 
@@ -75,7 +75,7 @@ degree Celsius, e.g. 80 = 8.0 °C).
 - `markStored(batchId)` — current custodian moves a `Received` batch to `Stored`.
 - `markDispensed(batchId)` — Pharmacy custodian moves a `Stored` batch to `Dispensed` (terminal).
 - `quarantineBatch(batchId, reason)` / `releaseQuarantine(batchId)` — Regulator-only; quarantine preserves the prior status for release.
-- `recallBatch(batchId, reason)` — Regulator-only; `Recalled` is terminal.
+- `recallBatch(batchId, reason)` — Regulator, or the Manufacturer that registered the batch; `Recalled` is terminal.
 - `approveBatch(batchId, certificateHash)` — Regulator-only; anchors the certificate hash and records the approver.
 - Implementation (`StatusModule.sol`) lands in S2-S4; open team-vote questions (approval before first shipment, Manufacturer-initiated recall) are tracked in the S1 PR.
 
