@@ -21,6 +21,7 @@ A batch can have one of the following statuses:
 |---|---|---|---|
 | `Created` | `InTransit` | Current custodian | A custody transfer is initiated for a newly created batch. |
 | `InTransit` | `Received` | Pending custodian | The recipient accepts the custody transfer. |
+| `InTransit` | Status before the transfer | Current custodian (sender) | The sender cancels a pending transfer before it is accepted (`cancelTransfer`). The batch returns only to the status it held right before `InTransit` (`Created`, `Received` or `Stored`). |
 | `Received` | `Stored` | Current custodian | The current custodian marks the received batch as stored. |
 | `Received` | `InTransit` | Current custodian | The current custodian initiates the next custody transfer. |
 | `Stored` | `InTransit` | Current custodian | A stored batch is sent to the next participant in the supply chain. |
@@ -52,5 +53,7 @@ An authorized Regulator is intended to perform the following actions:
 - Recall a batch using `recallBatch`.
 - Approve a batch and anchor its certificate hash using `approveBatch`.
 
-The detailed access-control checks and status-transition logic will be
-implemented in later contract modules.
+The transition table above is enforced by `_changeStatus` in
+`contracts/modules/StatusModule.sol` (S2). Any move not listed reverts with
+`InvalidTransition(batchId, from, to)`. The regulator actions above are
+implemented in later commits (S3, S4).

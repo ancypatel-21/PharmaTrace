@@ -15,7 +15,7 @@ import {BatchRegistry} from "./BatchRegistry.sol";
 ///
 ///      Allowed transitions:
 ///        Created            -> InTransit
-///        InTransit          -> Received
+///        InTransit          -> Received | status held before InTransit (cancelled handoff)
 ///        Received           -> Stored | InTransit (next hop)
 ///        Stored             -> InTransit (next hop) | Dispensed
 ///        any non-terminal   -> Quarantined
@@ -29,6 +29,12 @@ abstract contract StatusModule is BatchRegistry {
     ///      Written by _changeStatus whenever a batch is quarantined, so a release can only
     ///      restore that exact status. Read by the quarantine/recall logic (S3).
     mapping(uint256 => Status) internal _statusBeforeQuarantine;
+
+    /// @dev batchId => the status the batch held right before it entered InTransit
+    ///      (Created, Received or Stored). Written by _changeStatus whenever a handoff starts,
+    ///      so a cancelled handoff (cancelTransfer, N2) can only return the batch to that
+    ///      exact status and not jump to any other earlier state.
+    mapping(uint256 => Status) internal _statusBeforeTransit;
 
     /// @notice Marks a received batch as stored.
     /// @dev Current custodian only. Allowed only from Received (Received -> Stored).
@@ -52,8 +58,12 @@ abstract contract StatusModule is BatchRegistry {
     /// @notice Moves a batch to `newStatus`, enforcing the allowed-transition table.
     /// @dev Internal hook shared with the custody, quarantine and oracle code. Callers are
     ///      responsible for their own role checks; this function only checks that the batch
-    ///      exists and that the transition is allowed. Records the pre-quarantine status when
-    ///      entering Quarantined. Emits StatusChanged(batchId, from, to, msg.sender).
+    ///      exists and that the transition is allowed. Records the previous status when
+    ///      entering Quarantined (for release) or entering InTransit from Created, Received
+    ///      or Stored (for a cancelled handoff). Emits StatusChanged(batchId, from, to,
+    ///      msg.sender).
+    ///      Note: when the pre-transit status was Received, InTransit -> Received is both a
+    ///      normal accept and a cancel; the custody module decides which one it is.
     /// @param batchId The batch to update.
     /// @param newStatus The status to move to.
     function _changeStatus(uint256 batchId, Status newStatus) internal virtual {
@@ -68,6 +78,10 @@ abstract contract StatusModule is BatchRegistry {
 
         if (newStatus == Status.Quarantined) {
             _statusBeforeQuarantine[batchId] = from;
+        } else if (newStatus == Status.InTransit && from != Status.Quarantined) {
+            // A release from quarantine back to InTransit keeps the original pre-transit
+            // status, so the handoff can still be cancelled afterwards.
+            _statusBeforeTransit[batchId] = from;
         }
 
         batch.status = newStatus;
@@ -85,7 +99,9 @@ abstract contract StatusModule is BatchRegistry {
             return to == Status.InTransit || to == Status.Quarantined;
         }
         if (from == Status.InTransit) {
-            return to == Status.Received || to == Status.Quarantined;
+            return to == Status.Received
+                || to == Status.Quarantined
+                || to == _statusBeforeTransit[batchId];
         }
         if (from == Status.Received) {
             return to == Status.Stored || to == Status.InTransit || to == Status.Quarantined;
