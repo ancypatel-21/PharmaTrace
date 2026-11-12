@@ -116,8 +116,8 @@ interface IProvenanceTracker {
 
     // ---------------------------------------------------------------------
     // Nandana — custody transfer and provenance history
-    // Added in N1 (interface + NatSpec): initiateTransfer, acceptTransfer,
-    // optional cancelTransfer, getCustodyHistory, getHistoryLength.
+    // Added in N1 (interface + NatSpec): initiateTransfer, acceptTransfer, cancelTransfer,
+    // getCustodyHistory, getHistoryLength.
     //
     // Every handoff is two-step: the current custodian sends (initiateTransfer), then the
     // recipient signs for it (acceptTransfer). Custody only changes once both sides have
@@ -131,7 +131,11 @@ interface IProvenanceTracker {
     //   Pharmacy     -> none (final holder; the batch ends as Dispensed, see markDispensed)
     //
     // Roles are checked with AccessRoles (A4). If an account holds more than one role, the
-    // hop is allowed when any role it holds permits it.
+    // hop is allowed when any role it holds permits it. The hop is checked again on accept.
+    //
+    // Quarantined, Recalled and Dispensed batches cannot be sent, accepted or cancelled: the
+    // status moves these functions make are rejected by _changeStatus (S2) with
+    // InvalidTransition.
     // ---------------------------------------------------------------------
 
     /// @notice One completed handoff in a batch's custody history.
@@ -147,7 +151,6 @@ interface IProvenanceTracker {
     }
 
     /// @notice The sender withdrew a pending handoff before the recipient accepted it.
-    /// @dev Only emitted if the team keeps cancelTransfer (vote at the weekly meeting).
     event CustodyTransferCancelled(
         uint256 indexed batchId,
         address indexed from,
@@ -158,7 +161,8 @@ interface IProvenanceTracker {
     error NotCurrentCustodian(uint256 batchId, address caller);
 
     /// @notice Recipient is the zero address, the sender itself, or does not hold a role
-    ///         that the sender's role may hand off to (see the hop table above).
+    ///         that the sender's role may hand off to (see the hop table above). Also raised
+    ///         on accept if either side's role was revoked after the transfer started.
     error InvalidNextHop(uint256 batchId, address to);
 
     /// @notice The batch already has a handoff waiting to be accepted.
@@ -172,8 +176,7 @@ interface IProvenanceTracker {
 
     /// @notice Starts a handoff: the current custodian names the next custodian.
     /// @dev Requirements:
-    ///      - the batch exists (A5) and is not Quarantined, Recalled or Dispensed
-    ///        (Shreyanshi's notFrozen modifier, S3);
+    ///      - the batch exists (A5) and is not Quarantined, Recalled or Dispensed;
     ///      - msg.sender is the batch's currentCustodian;
     ///      - `to` holds a role the sender's role may hand off to (hop table above);
     ///      - no other handoff is pending (pendingCustodian is address(0)).
@@ -187,10 +190,10 @@ interface IProvenanceTracker {
     function initiateTransfer(uint256 batchId, address to) external;
 
     /// @notice Completes a handoff: the named recipient signs for the batch.
-    /// @dev Requirements: a handoff is pending, msg.sender is its pendingCustodian, and the
-    ///      batch is not frozen (notFrozen, S3). A batch quarantined while in transit (e.g.
-    ///      by an oracle excursion) cannot be accepted until a Regulator releases it back
-    ///      to InTransit.
+    /// @dev Requirements: a handoff is pending, msg.sender is its pendingCustodian and still
+    ///      holds a role the sender may hand off to, and the batch is not frozen. A batch
+    ///      quarantined while in transit (e.g. by an oracle excursion) cannot be accepted
+    ///      until a Regulator releases it back to InTransit.
     ///      Effects: currentCustodian = msg.sender, pendingCustodian cleared, status moves
     ///      to Received through _changeStatus (S2), and a CustodyRecord is appended to the
     ///      batch's history (N3).
@@ -200,13 +203,12 @@ interface IProvenanceTracker {
     function acceptTransfer(uint256 batchId) external;
 
     /// @notice Withdraws a pending handoff before the recipient accepts it.
-    /// @dev Optional, pending the team vote. Requirements: a handoff is pending,
-    ///      msg.sender is still the currentCustodian, and the batch is not frozen
-    ///      (notFrozen, S3), so a quarantined batch stays with the Regulator's decision.
-    ///      Effects: pendingCustodian cleared and
-    ///      the status returns to what it was before initiateTransfer. That reverse move
-    ///      (InTransit -> Created/Received/Stored) is not in the S2 transition table yet and
-    ///      needs Shreyanshi's OK. Emits CustodyTransferCancelled and StatusChanged.
+    /// @dev Kept by team vote. Requirements: a handoff is pending, msg.sender is still the
+    ///      currentCustodian (the sender), and the batch is not frozen, so a quarantined
+    ///      batch stays with the Regulator's decision. Effects: pendingCustodian cleared and
+    ///      the status returns to exactly what it was before initiateTransfer (Created,
+    ///      Received or Stored; recorded by _changeStatus, S2). Emits
+    ///      CustodyTransferCancelled and StatusChanged.
     /// @param batchId The batch whose pending handoff is withdrawn.
     function cancelTransfer(uint256 batchId) external;
 

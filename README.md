@@ -83,7 +83,7 @@ degree Celsius, e.g. 80 = 8.0 °C).
 
 - `initiateTransfer(batchId, to)` — current custodian starts a two-step handoff to an allowed next-hop role; moves the batch to `InTransit`.
 - `acceptTransfer(batchId)` — named recipient completes the handoff; moves the batch to `Received` and appends a `CustodyRecord`.
-- `cancelTransfer(batchId)` — optional, pending a team vote; withdraws a pending handoff.
+- `cancelTransfer(batchId)` — the sender withdraws a pending handoff; the batch returns to the status it held before the transfer.
 - `getCustodyHistory(batchId)`, `getHistoryLength(batchId)` — full handoff history, oldest first.
 - Allowed hops: Manufacturer → Distributor/Carrier; Distributor → Carrier/Pharmacy; Carrier → Distributor/Pharmacy.
 - Implementation (`CustodyModule.sol`) lands in N2-N3.
