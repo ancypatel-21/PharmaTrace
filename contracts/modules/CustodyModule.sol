@@ -24,9 +24,19 @@ import {StatusModule} from "./StatusModule.sol";
 ///        Carrier      -> Distributor | Pharmacy
 ///        Pharmacy     -> none (final holder)
 ///      An account holding several roles may make any hop one of its roles allows. The hop is
-///      checked again when the recipient accepts, so a participant whose role is revoked in
-///      between cannot take custody.
+///      checked again when the recipient accepts, so if either side's role is revoked in
+///      between, custody does not move (the sender can still cancel).
+///
+///      Provenance history (N3): every accepted handoff appends one CustodyRecord
+///      {from, to, timestamp, statusAfter} to an append-only array per batch. On-chain
+///      records are kept this small on purpose; the rest of the story (when a handoff was
+///      started, cancelled handoffs, every status change) lives in the CustodyTransfer* and
+///      StatusChanged events, which cost far less gas than storage. The gas report (A10)
+///      measures this trade-off.
 abstract contract CustodyModule is StatusModule {
+    /// @dev batchId => accepted handoffs, oldest first. Append-only: never edited or removed.
+    mapping(uint256 => CustodyRecord[]) private _custodyHistory;
+
     /// @notice Starts a handoff: the current custodian names the next custodian.
     /// @dev Reverts with UnknownBatch, NotCurrentCustodian, TransferAlreadyPending,
     ///      InvalidNextHop or InvalidTransition (frozen batch). Sets pendingCustodian, moves
@@ -52,10 +62,12 @@ abstract contract CustodyModule is StatusModule {
 
     /// @notice Completes a handoff: the named recipient signs for the batch.
     /// @dev Reverts with UnknownBatch, NoPendingTransfer, NotPendingCustodian, InvalidNextHop
-    ///      (the recipient no longer holds a role the sender may hand off to) or
+    ///      (the hop is no longer allowed because the sender's or the recipient's role was
+    ///      revoked after the transfer started) or
     ///      InvalidTransition (the batch was quarantined or recalled in transit). Moves custody
-    ///      to msg.sender, clears pendingCustodian, moves the batch to Received and emits
-    ///      StatusChanged and CustodyTransferAccepted.
+    ///      to msg.sender, clears pendingCustodian, moves the batch to Received, appends a
+    ///      CustodyRecord to the batch's history and emits StatusChanged and
+    ///      CustodyTransferAccepted.
     /// @param batchId The batch being accepted.
     function acceptTransfer(uint256 batchId) external override {
         if (!_batchExists(batchId)) revert UnknownBatch(batchId);
@@ -71,6 +83,15 @@ abstract contract CustodyModule is StatusModule {
         batch.currentCustodian = msg.sender;
         batch.pendingCustodian = address(0);
         _changeStatus(batchId, Status.Received);
+
+        _custodyHistory[batchId].push(
+            CustodyRecord({
+                from: from,
+                to: msg.sender,
+                timestamp: uint64(block.timestamp),
+                statusAfter: batch.status
+            })
+        );
 
         emit CustodyTransferAccepted(batchId, from, msg.sender);
     }
@@ -94,6 +115,28 @@ abstract contract CustodyModule is StatusModule {
         _changeStatus(batchId, _statusBeforeTransit[batchId]);
 
         emit CustodyTransferCancelled(batchId, msg.sender, to);
+    }
+
+    /// @notice Full custody history of a batch, oldest handoff first.
+    /// @dev Only accepted handoffs; the first holder is batch.manufacturer. Returns an empty
+    ///      array for a batch that has not been handed off yet or for an unknown ID, so the
+    ///      public verify page never has to catch a revert here.
+    /// @param batchId The batch to read.
+    /// @return history Handoffs in the order they were accepted.
+    function getCustodyHistory(uint256 batchId)
+        external
+        view
+        override
+        returns (CustodyRecord[] memory history)
+    {
+        return _custodyHistory[batchId];
+    }
+
+    /// @notice Number of accepted handoffs recorded for a batch (0 for an unknown ID).
+    /// @param batchId The batch to read.
+    /// @return length Number of entries getCustodyHistory would return.
+    function getHistoryLength(uint256 batchId) external view override returns (uint256 length) {
+        return _custodyHistory[batchId].length;
     }
 
     /// @dev Whether `from` may hand a batch to `to`, per the hop table above.

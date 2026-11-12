@@ -161,7 +161,8 @@ interface IProvenanceTracker {
     error NotCurrentCustodian(uint256 batchId, address caller);
 
     /// @notice Recipient is the zero address, the sender itself, or does not hold a role
-    ///         that the sender's role may hand off to (see the hop table above).
+    ///         that the sender's role may hand off to (see the hop table above). Also raised
+    ///         on accept if either side's role was revoked after the transfer started.
     error InvalidNextHop(uint256 batchId, address to);
 
     /// @notice The batch already has a handoff waiting to be accepted.
