@@ -6,8 +6,8 @@ import {ProvenanceTracker} from "../ProvenanceTracker.sol";
 
 /// @title CustodyTestHarness (test only, never deployed)
 /// @notice Deployable stand-in for ProvenanceTracker so the custody tests (N4) can run before
-///         the remaining modules land. ProvenanceTracker stays abstract until S3/S4
-///         (quarantine, recall, approval), B3 (oracle) and the verify views are merged.
+///         the remaining modules land. ProvenanceTracker stays abstract until S4
+///         (approval), B3 (oracle) and the verify views are merged.
 /// @dev The unmerged interface functions revert with NotInHarness. Three helpers move a batch
 ///      into and out of Quarantined/Recalled through the real _changeStatus (S2), so the
 ///      tests exercise the real transition table rather than a fake one. Delete this file
@@ -29,23 +29,8 @@ contract CustodyTestHarness is ProvenanceTracker {
         _changeStatus(batchId, Status.Recalled);
     }
 
-    // --- Not merged yet (S3, S4, B3, verify views) ---
-
-    function _quarantine(uint256, string memory) internal pure override {
-        revert NotInHarness();
-    }
-
-    function quarantineBatch(uint256, string calldata) external pure override {
-        revert NotInHarness();
-    }
-
-    function releaseQuarantine(uint256) external pure override {
-        revert NotInHarness();
-    }
-
-    function recallBatch(uint256, string calldata) external pure override {
-        revert NotInHarness();
-    }
+    // --- Not merged yet (S4, B3, verify views) ---
+    // Quarantine, release and recall now come from StatusModule (S3).
 
     function approveBatch(uint256, bytes32) external pure override {
         revert NotInHarness();

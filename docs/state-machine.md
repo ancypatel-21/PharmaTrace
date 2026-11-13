@@ -28,7 +28,7 @@ A batch can have one of the following statuses:
 | `Stored` | `Dispensed` | Pharmacy | The pharmacy dispenses the batch. `Dispensed` is a terminal status. |
 | Any non-terminal status | `Quarantined` | Regulator or authorized Oracle path | The batch is quarantined manually by a Regulator or automatically after a temperature excursion. |
 | `Quarantined` | Previous status | Regulator | The Regulator releases the quarantine and restores the status held immediately before quarantine. |
-| `Quarantined` | `Recalled` | Regulator | The Regulator recalls a quarantined batch. `Recalled` is a terminal status. |
+| `Quarantined` | `Recalled` | Regulator, or the batch's own Manufacturer | The batch is recalled. `Recalled` is a terminal status. |
 
 ## Quarantine Behavior
 
@@ -38,6 +38,26 @@ releases the quarantine, the batch returns to that previous status.
 
 The Oracle path may automatically quarantine a batch when a reported
 temperature falls outside the required 2-8 C cold-chain range.
+
+While a batch is `Quarantined`, `Recalled` or `Dispensed` it is frozen: the
+`notFrozen` modifier blocks custody transfers. A pending transfer is kept
+during quarantine, so a batch quarantined while `InTransit` returns to
+`InTransit` with the same pending recipient when released.
+
+## Recall Behavior
+
+`recallBatch` works from any non-terminal status. If the batch is not already
+`Quarantined`, it is moved to `Quarantined` and then to `Recalled` in the same
+transaction, so `Recalled` is still only reachable from `Quarantined` and both
+moves appear as `StatusChanged` events. Any pending transfer is cleared.
+Quarantine and recall both require a non-empty reason, which the verify page
+shows.
+
+A Regulator can recall any batch. The Manufacturer that registered a batch can
+also recall that batch (most real drug recalls are started by the
+manufacturer), as long as it still holds the Manufacturer role. A Manufacturer
+cannot recall another manufacturer's batch, and only a Regulator can
+quarantine a batch or release a quarantine.
 
 ## Terminal States
 
@@ -55,5 +75,5 @@ An authorized Regulator is intended to perform the following actions:
 
 The transition table above is enforced by `_changeStatus` in
 `contracts/modules/StatusModule.sol` (S2). Any move not listed reverts with
-`InvalidTransition(batchId, from, to)`. The regulator actions above are
-implemented in later commits (S3, S4).
+`InvalidTransition(batchId, from, to)`. Quarantine, release and recall are
+implemented in the same module (S3); approval follows in S4.

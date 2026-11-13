@@ -102,8 +102,9 @@ interface IProvenanceTracker {
     function releaseQuarantine(uint256 batchId) external;
 
     /// @notice Recalls a batch for a specified reason.
-    /// @dev Intended to be called by an authorized Regulator. Recalled is a
-    ///      terminal status and no further status transitions are allowed.
+    /// @dev Intended to be called by an authorized Regulator, or by the Manufacturer
+    ///      that registered the batch. Recalled is a terminal status and no further
+    ///      status transitions are allowed.
     /// @param batchId The unique identifier of the batch.
     /// @param reason The reason for recalling the batch.
     function recallBatch(uint256 batchId, string calldata reason) external;
