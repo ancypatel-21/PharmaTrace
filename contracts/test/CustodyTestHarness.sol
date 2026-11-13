@@ -29,18 +29,11 @@ contract CustodyTestHarness is ProvenanceTracker {
         _changeStatus(batchId, Status.Recalled);
     }
 
-    // --- Not merged yet (S4, B3, verify views) ---
-    // Quarantine, release and recall now come from StatusModule (S3).
+    // --- Not merged yet (S4, verify views) ---
+    // Quarantine, release and recall now come from StatusModule (S3); reportTemperature and
+    // getLatestTemperature come from OracleModule (B3).
 
     function approveBatch(uint256, bytes32) external pure override {
-        revert NotInHarness();
-    }
-
-    function reportTemperature(uint256, int16, int16, uint32, uint64, uint64, bytes32)
-        external
-        pure
-        override
-    {
         revert NotInHarness();
     }
 
@@ -49,15 +42,6 @@ contract CustodyTestHarness is ProvenanceTracker {
         pure
         override
         returns (bool, Batch memory, TempSummary memory, uint256, address)
-    {
-        revert NotInHarness();
-    }
-
-    function getLatestTemperature(uint256)
-        external
-        pure
-        override
-        returns (TempSummary memory, uint256)
     {
         revert NotInHarness();
     }
