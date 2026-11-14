@@ -19,7 +19,7 @@ A batch can have one of the following statuses:
 
 | Current Status | Next Status | Trigger / Actor | Description |
 |---|---|---|---|
-| `Created` | `InTransit` | Current custodian | A custody transfer is initiated for a newly created batch. |
+| `Created` | `InTransit` | Current custodian | A custody transfer is initiated for a newly created batch. The batch must first be approved by a Regulator (`approveBatch`), otherwise this reverts with `NotApproved`. |
 | `InTransit` | `Received` | Pending custodian | The recipient accepts the custody transfer. |
 | `InTransit` | Status before the transfer | Current custodian (sender) | The sender cancels a pending transfer before it is accepted (`cancelTransfer`). The batch returns only to the status it held right before `InTransit` (`Created`, `Received` or `Stored`). |
 | `Received` | `Stored` | Current custodian | The current custodian marks the received batch as stored. |
@@ -76,4 +76,14 @@ An authorized Regulator is intended to perform the following actions:
 The transition table above is enforced by `_changeStatus` in
 `contracts/modules/StatusModule.sol` (S2). Any move not listed reverts with
 `InvalidTransition(batchId, from, to)`. Quarantine, release and recall are
-implemented in the same module (S3); approval follows in S4.
+implemented in the same module (S3), and so is approval (S4).
+
+## Approval Before First Shipment
+
+By team vote, a batch must be approved by a Regulator before its first
+shipment. `approveBatch` sets `approved`, records the approving Regulator and
+anchors the certificate hash (replacing the hash given at registration). Until
+then, `Created` -> `InTransit` reverts with `NotApproved(batchId)`. Approval is
+one-time (`AlreadyApproved`), needs a non-zero hash, and is not possible while
+the batch is `Quarantined`, `Recalled` or `Dispensed` (`BatchFrozen`). A bad
+batch is quarantined or recalled rather than un-approved.

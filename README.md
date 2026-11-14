@@ -45,7 +45,7 @@ access table required by the course spec.
 
 | From | To | Trigger / actor |
 | --- | --- | --- |
-| `Created` | `InTransit` | Current custodian initiates a transfer |
+| `Created` | `InTransit` | Current custodian initiates a transfer (only after Regulator approval) |
 | `InTransit` | `Received` | Pending custodian accepts the transfer |
 | `Received` | `Stored` | Current custodian marks the batch stored |
 | `Received` / `Stored` | `InTransit` | Current custodian initiates the next transfer |
@@ -76,7 +76,7 @@ degree Celsius, e.g. 80 = 8.0 °C).
 - `markDispensed(batchId)` — Pharmacy custodian moves a `Stored` batch to `Dispensed` (terminal).
 - `quarantineBatch(batchId, reason)` / `releaseQuarantine(batchId)` — Regulator-only; quarantine preserves the prior status for release.
 - `recallBatch(batchId, reason)` — Regulator, or the Manufacturer that registered the batch; `Recalled` is terminal.
-- `approveBatch(batchId, certificateHash)` — Regulator-only; anchors the certificate hash and records the approver.
+- `approveBatch(batchId, certificateHash)` — Regulator-only; anchors the certificate hash and records the approver. A batch must be approved before its first shipment (team vote).
 - Implementation (`StatusModule.sol`) lands in S2-S4; open team-vote questions (approval before first shipment, Manufacturer-initiated recall) are tracked in the S1 PR.
 
 ### Custody transfers and provenance history (Nandana)
