@@ -65,11 +65,11 @@ block number and log index to build the timeline.
 - Quarantined or Recalled show a red banner at the top of the page.
 - Expired batches (`expiryDate` in the past) get an "Expired" warning even if the status is fine.
 
-## Open questions for the team
+## Resolved questions
 
-1. **Approver address.** S4 records `approvedBy`, but `struct Batch` has no `approvedBy` field.
-   `getBatchSummary` returns it separately, so S4 needs to store it (for example in a
-   `mapping(uint256 => address)`). `PharmaTypes.sol` does not need to change.
-2. **Who implements these views.** `getLatestTemperature` reads storage owned by OracleModule (B3).
-   Proposal: Barath implements it in `OracleModule.sol`, and `getBatchSummary` is assembled in
-   `ProvenanceTracker.sol` once all modules are in, using internal getters from each module.
+1. **Approver address.** Resolved in S4: `StatusModule` stores the approving Regulator in
+   `_approvedBy` (a `mapping(uint256 => address)`), and `getBatchSummary` returns it.
+   `PharmaTypes.sol` did not change.
+2. **Who implements these views.** `getLatestTemperature` is in `OracleModule.sol` (B3).
+   `getBatchSummary` is implemented in `ProvenanceTracker.sol` (with S4), reading the batch,
+   oracle and approval storage directly, which makes `ProvenanceTracker` deployable.

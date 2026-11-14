@@ -1,8 +1,8 @@
 // Custody transfer and provenance history tests (N4).
 //
-// Deploys contracts/test/CustodyTestHarness.sol: ProvenanceTracker stays abstract until S3/S4,
-// B3 and the verify views land, and the shared fixture (test/fixtures.js, A6) is not merged
-// yet. Switch deployCustody to the shared fixture once both are on main.
+// Deploys contracts/test/CustodyTestHarness.sol: the full ProvenanceTracker plus three
+// test-only helpers that freeze/unfreeze a batch without role checks. Switch deployCustody to
+// the shared fixture (test/fixtures.js, A6) once it is on main.
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
