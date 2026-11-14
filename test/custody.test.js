@@ -58,6 +58,8 @@ async function deployCustody() {
     .connect(manufacturer)
     .registerBatch("Insulin 10ml", "LOT-001", expiry, ethers.ZeroHash);
   const batchId = 1n;
+  // S4 team decision: a batch must be approved by a Regulator before its first shipment.
+  await tracker.connect(regulator).approveBatch(batchId, ethers.id("cert-LOT-001"));
 
   return {
     tracker,
@@ -603,11 +605,19 @@ describe("CustodyModule", function () {
     });
 
     it("keeps each batch's history separate", async function () {
-      const { tracker, batchId, expiry, manufacturer, distributor, carrier } =
-        await loadFixture(deployCustody);
+      const {
+        tracker,
+        batchId,
+        expiry,
+        manufacturer,
+        distributor,
+        carrier,
+        regulator,
+      } = await loadFixture(deployCustody);
       await tracker
         .connect(manufacturer)
         .registerBatch("Vaccine", "LOT-002", expiry, ethers.ZeroHash);
+      await tracker.connect(regulator).approveBatch(2n, ethers.id("cert-LOT-002"));
 
       await handoff(tracker, batchId, manufacturer, distributor);
       await handoff(tracker, 2n, manufacturer, carrier);

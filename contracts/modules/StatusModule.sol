@@ -9,14 +9,14 @@ import {BatchRegistry} from "./BatchRegistry.sol";
 ///         _changeStatus, which enforces the allowed-transition table in
 ///         docs/state-machine.md and emits StatusChanged.
 /// @dev Abstract: implements _changeStatus, _quarantine and the notFrozen modifier, plus the
-///      markStored / markDispensed / quarantineBatch / releaseQuarantine / recallBatch slice
-///      of IProvenanceTracker. The custody module (N2) calls _changeStatus to move a batch to
+///      markStored / markDispensed / quarantineBatch / releaseQuarantine / recallBatch /
+///      approveBatch slice of IProvenanceTracker. The custody module (N2) calls _changeStatus to move a batch to
 ///      InTransit and Received; quarantine, release and recall (S3) and the oracle path (B3)
 ///      also go through it. Never duplicate transition logic in another module.
 ///
 ///      Allowed transitions:
-///        Created            -> InTransit
-///        InTransit          -> Received | status held before InTransit (cancelled handoff)
+///        Created            -> InTransit (only once a Regulator has approved the batch)
+///        InTransit         -> Received | status held before InTransit (cancelled handoff)
 ///        Received           -> Stored | InTransit (next hop)
 ///        Stored             -> InTransit (next hop) | Dispensed
 ///        any non-terminal   -> Quarantined
@@ -38,6 +38,15 @@ abstract contract StatusModule is BatchRegistry {
     /// @notice `caller` is not allowed to recall this batch.
     error RecallNotAuthorized(uint256 batchId, address caller);
 
+    /// @notice The batch has not been approved by a Regulator, so it cannot ship yet.
+    error NotApproved(uint256 batchId);
+
+    /// @notice The batch was already approved.
+    error AlreadyApproved(uint256 batchId, address approvedBy);
+
+    /// @notice approveBatch was called with a zero certificate hash.
+    error EmptyCertificateHash();
+
     /// @notice Blocks a batch that is Quarantined, Recalled or Dispensed.
     /// @dev Used by the custody module (N2) on initiateTransfer / cancelTransfer so a frozen
     ///      batch cannot move. Reverts with UnknownBatch or BatchFrozen.
@@ -56,6 +65,40 @@ abstract contract StatusModule is BatchRegistry {
     ///      so a cancelled handoff (cancelTransfer, N2) can only return the batch to that
     ///      exact status and not jump to any other earlier state.
     mapping(uint256 => Status) internal _statusBeforeTransit;
+
+    /// @dev batchId => the Regulator that approved the batch, or address(0) if not approved.
+    ///      struct Batch only has an `approved` flag, so the approver lives here; the
+    ///      public verify view (getBatchSummary) reads it through _approvedBy.
+    mapping(uint256 => address) internal _approvedBy;
+
+    /// @notice Approves a batch and anchors its certificate hash on-chain.
+    /// @dev Regulator only. Team decision: a batch must be approved before its first
+    ///      shipment, so Created -> InTransit reverts with NotApproved until this is called
+    ///      (enforced in _changeStatus). Allowed while the batch is not frozen (Created,
+    ///      InTransit, Received or Stored); approval is one-time and cannot be revoked here —
+    ///      a bad batch is quarantined or recalled instead. The given hash replaces the one
+    ///      supplied at registration, so the on-chain hash is always the approved certificate.
+    ///      Reverts with AccessControlUnauthorizedAccount, EmptyCertificateHash, UnknownBatch,
+    ///      BatchFrozen or AlreadyApproved. Emits BatchApproved(batchId, approvedBy, hash).
+    /// @param batchId The batch to approve.
+    /// @param certificateHash Hash of the batch certificate (e.g. keccak256 of the PDF).
+    function approveBatch(uint256 batchId, bytes32 certificateHash)
+        external
+        override
+        onlyRole(REGULATOR_ROLE)
+    {
+        if (certificateHash == bytes32(0)) revert EmptyCertificateHash();
+        _requireNotFrozen(batchId);
+
+        Batch storage batch = _batches[batchId];
+        if (batch.approved) revert AlreadyApproved(batchId, _approvedBy[batchId]);
+
+        batch.approved = true;
+        batch.certificateHash = certificateHash;
+        _approvedBy[batchId] = msg.sender;
+
+        emit BatchApproved(batchId, msg.sender, certificateHash);
+    }
 
     /// @notice Marks a received batch as stored.
     /// @dev Current custodian only. Allowed only from Received (Received -> Stored).
@@ -160,7 +203,8 @@ abstract contract StatusModule is BatchRegistry {
     /// @notice Moves a batch to `newStatus`, enforcing the allowed-transition table.
     /// @dev Internal hook shared with the custody, quarantine and oracle code. Callers are
     ///      responsible for their own role checks; this function only checks that the batch
-    ///      exists and that the transition is allowed. Records the previous status when
+    ///      exists and that the transition is allowed, and that a batch leaving Created for
+    ///      InTransit has been approved (NotApproved). Records the previous status when
     ///      entering Quarantined (for release) or entering InTransit from Created, Received
     ///      or Stored (for a cancelled handoff). Emits StatusChanged(batchId, from, to,
     ///      msg.sender).
@@ -176,6 +220,10 @@ abstract contract StatusModule is BatchRegistry {
 
         if (!_isAllowedTransition(batchId, from, newStatus)) {
             revert InvalidTransition(batchId, from, newStatus);
+        }
+        // Team decision (S4): the first shipment needs a Regulator's approval.
+        if (from == Status.Created && newStatus == Status.InTransit && !batch.approved) {
+            revert NotApproved(batchId);
         }
 
         if (newStatus == Status.Quarantined) {

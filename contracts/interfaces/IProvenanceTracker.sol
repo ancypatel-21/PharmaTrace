@@ -110,7 +110,8 @@ interface IProvenanceTracker {
     function recallBatch(uint256 batchId, string calldata reason) external;
 
     /// @notice Approves a batch and anchors its certificate hash on-chain.
-    /// @dev Intended to be called by an authorized Regulator.
+    /// @dev Intended to be called by an authorized Regulator. By team vote, a batch must
+    ///      be approved before its first shipment (Created -> InTransit).
     /// @param batchId The unique identifier of the batch.
     /// @param certificateHash The cryptographic hash of the batch certificate.
     function approveBatch(uint256 batchId, bytes32 certificateHash) external;
@@ -184,8 +185,8 @@ interface IProvenanceTracker {
     ///      Effects: sets pendingCustodian = to and moves the status to InTransit through
     ///      _changeStatus (S2), which allows this from Created, Received or Stored.
     ///      Emits CustodyTransferInitiated and StatusChanged.
-    ///      If the team votes that a batch must be approved before its first shipment (S4),
-    ///      this function also requires batch.approved.
+    ///      The team voted that a batch must be approved before its first shipment (S4):
+    ///      _changeStatus reverts with NotApproved on Created -> InTransit until approveBatch.
     /// @param batchId The batch being handed off.
     /// @param to The next custodian; must accept with acceptTransfer.
     function initiateTransfer(uint256 batchId, address to) external;
