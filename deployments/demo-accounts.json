@@ -1,0 +1,10 @@
+{
+  "amoy": {
+    "MANUFACTURER": { "address": "", "name": "" },
+    "DISTRIBUTOR": { "address": "", "name": "" },
+    "CARRIER": { "address": "", "name": "" },
+    "PHARMACY": { "address": "", "name": "" },
+    "REGULATOR": { "address": "", "name": "" },
+    "ORACLE": { "address": "", "name": "" }
+  }
+}

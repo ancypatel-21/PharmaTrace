@@ -110,8 +110,8 @@ degree Celsius, e.g. 80 = 8.0 °C).
 - `dotenv`, to load `.env` into `hardhat.config.js`
 
 All of the above are pinned in [`package.json`](package.json); `npm install` installs the exact
-versions from [`package-lock.json`](package-lock.json). The web app and simulator will add their
-own `package.json` files under `web/` and `simulator/` as those commits land (V2, B2).
+versions from [`package-lock.json`](package-lock.json). The web app (`web/`) and the simulator
+(`simulator/`) have their own `package.json` files with their own dependencies.
 
 ## How to run
 
@@ -128,13 +128,31 @@ npm run compile
 # run the contract test suite
 npm test
 
-# start a local Hardhat node (separate terminal)
-npx hardhat node
-
 # lint / format Solidity
 npm run lint
 npm run format
 ```
+
+### Deploy locally and connect the web app / simulator to it
+
+```bash
+# start a persistent local node (separate terminal, leave running)
+npx hardhat node
+
+# deploy ProvenanceTracker to it, recording deployments/localhost.json
+npx hardhat run scripts/deploy.js --network localhost
+
+# grant the six participant roles to demo accounts (see deployments/README.md)
+npx hardhat run scripts/seed-roles.js --network localhost
+
+# export the address + ABI to web/src/contracts/ and simulator/config/
+npx hardhat run scripts/export-abi.js --network localhost
+```
+
+Re-run `export-abi.js` for the current network any time a contract function or event signature
+changes. The same three scripts work against `amoy` once `AMOY_RPC_URL` and
+`DEPLOYER_PRIVATE_KEY` are set in `.env` (fund that wallet from the Amoy faucet first) and
+`deployments/demo-accounts.json` has real participant addresses filled in.
 
 Deployment to Polygon Amoy, the React web app, and the Node.js simulator are not implemented yet
 at this draft stage; they land through Phase 1-2 of the work plan (A7-A9, V2-V6, B2-B6).
