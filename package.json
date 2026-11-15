@@ -7,7 +7,8 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "lint": "solhint 'contracts/**/*.sol'",
-    "format": "prettier --write 'contracts/**/*.sol' '**/*.js'"
+    "format": "prettier --write 'contracts/**/*.sol' '**/*.js'",
+    "sim": "node simulator/index.js"
   },
   "keywords": [],
   "author": "",
