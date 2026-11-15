@@ -393,3 +393,58 @@ h2 {
 .batch-qr-hint {
   margin: 6px 0 0;
 }
+
+/* Regulator dashboard (S6) */
+.btn-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.stat {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--surface);
+}
+
+.stat dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.stat dd {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.stat-warn {
+  border-color: var(--warn);
+  background: var(--warn-bg);
+}
+
+.stat-danger {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.card-alert {
+  border-left: 4px solid var(--danger);
+}
+
+.card-pending {
+  border-left: 4px solid var(--warn);
+}
+
+.regulator-flag {
+  color: var(--danger);
+  font-weight: 600;
+}
