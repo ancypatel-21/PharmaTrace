@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Interface } from "ethers";
 import {
+  awaitingApproval,
   buildDirectory,
   buildTimeline,
   canSendFrom,
@@ -43,6 +44,13 @@ describe("hop table", () => {
       STATUS.Stored,
     ]);
     expect(canSendFrom(3n)).toBe(true);
+  });
+
+  it("holds a Created batch until a Regulator approves it (S4 team decision)", () => {
+    expect(awaitingApproval({ status: 0n, approved: false })).toBe(true);
+    expect(awaitingApproval({ status: 0n, approved: true })).toBe(false);
+    // Approval only gates the first shipment; later hops never wait on it.
+    expect(awaitingApproval({ status: BigInt(STATUS.Received), approved: false })).toBe(false);
   });
 });
 
@@ -146,6 +154,20 @@ describe("custodyErrorMessage", () => {
     expect(custodyErrorMessage({ data })).toMatch(/can't take this batch/);
     const nested = iface.encodeErrorResult("InvalidTransition", [1, 5, 1]);
     expect(custodyErrorMessage({ info: { error: { data: nested } } })).toMatch(/quarantined/);
+  });
+
+  it("explains the approval and frozen-batch errors from StatusModule (S3, S4)", () => {
+    const status = new Interface([
+      "error NotApproved(uint256 batchId)",
+      "error BatchFrozen(uint256 batchId, uint8 status)",
+    ]);
+    expect(custodyErrorMessage({ data: status.encodeErrorResult("NotApproved", [1]) })).toMatch(
+      /Regulator has to approve/,
+    );
+    expect(custodyErrorMessage({ revert: { name: "NotApproved" } })).toMatch(/Regulator has to approve/);
+    expect(custodyErrorMessage({ data: status.encodeErrorResult("BatchFrozen", [1, 6]) })).toMatch(
+      /can't be handed off/,
+    );
   });
 
   it("reports a wallet rejection and falls back to the ethers message", () => {
