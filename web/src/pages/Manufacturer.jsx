@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ZeroHash, id as keccakId } from "ethers";
+import BatchQR from "../components/BatchQR.jsx";
 import RequireRole from "../components/RequireRole.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import { useWallet } from "../context/WalletContext.jsx";
@@ -9,8 +10,8 @@ import { getReadContract } from "../lib/providers.js";
 
 const lower = (address) => String(address).toLowerCase();
 
-// Manufacturer batch registration: register a new batch and show its batch ID (and QR link,
-// once the QR page lands) plus the list of batches this manufacturer has registered so far.
+// Manufacturer batch registration: register a new batch and show its batch ID and QR code
+// (V4, links to /verify/:id) plus the list of batches this manufacturer has registered so far.
 // The contract enforces every rule (manufacturer only, no empty fields, no past expiry, no
 // duplicate lot number); this page only shows a readable error when one of those checks fails.
 export default function Manufacturer() {
@@ -74,6 +75,7 @@ function ManufacturerActions() {
         setResult({
           ok: true,
           text: newId !== null ? `Registered batch #${newId}.` : "Batch registered.",
+          batch: newId !== null ? { id: newId, productName, lotNumber } : null,
         });
         setRefreshKey((k) => k + 1);
       } catch (err) {
@@ -110,6 +112,16 @@ function ManufacturerActions() {
           style={{ marginBottom: 16 }}
         >
           {result.text}
+          {result.batch && (
+            <>
+              <p className="muted small">Print this QR code on the pack. Scanning it opens the public verify page.</p>
+              <BatchQR
+                batchId={result.batch.id}
+                productName={result.batch.productName}
+                lotNumber={result.batch.lotNumber}
+              />
+            </>
+          )}
         </div>
       )}
 
@@ -138,6 +150,10 @@ function ManufacturerActions() {
                 {shortAddress(batch.currentCustodian)}
                 {batch.approved ? " · approved" : ""}
               </p>
+              <details style={{ marginTop: 6 }}>
+                <summary className="small">QR code</summary>
+                <BatchQR batchId={batch.id} productName={batch.productName} lotNumber={batch.lotNumber} size={128} />
+              </details>
             </article>
           ))
         )}
