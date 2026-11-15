@@ -30,6 +30,14 @@ export function canSendFrom(status) {
   return s === STATUS.Created || s === STATUS.Received || s === STATUS.Stored;
 }
 
+/**
+ * Whether a batch is still waiting for Regulator approval before its first shipment.
+ * Team decision (S4): Created -> InTransit reverts with NotApproved until approveBatch is called.
+ */
+export function awaitingApproval(batch) {
+  return Number(batch.status) === STATUS.Created && !batch.approved;
+}
+
 const lower = (address) => String(address).toLowerCase();
 
 /**
@@ -159,6 +167,8 @@ const ERRORS = new Interface([
   "error NotPendingCustodian(uint256 batchId, address caller)",
   "error UnknownBatch(uint256 batchId)",
   "error InvalidTransition(uint256 batchId, uint8 from, uint8 to)",
+  "error NotApproved(uint256 batchId)",
+  "error BatchFrozen(uint256 batchId, uint8 status)",
   "error AccessControlUnauthorizedAccount(address account, bytes32 neededRole)",
 ]);
 
@@ -172,6 +182,8 @@ const ERROR_MESSAGES = {
   UnknownBatch: "No batch has this ID.",
   InvalidTransition:
     "The batch's status doesn't allow this right now (it may be quarantined, recalled or dispensed).",
+  NotApproved: "A Regulator has to approve this batch before its first shipment.",
+  BatchFrozen: "The batch is quarantined, recalled or dispensed, so it can't be handed off.",
   AccessControlUnauthorizedAccount: "Your wallet doesn't have the role this action needs.",
 };
 

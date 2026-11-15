@@ -6,6 +6,7 @@ import StatusBadge from "../components/StatusBadge.jsx";
 import { useWallet } from "../context/WalletContext.jsx";
 import {
   CUSTODY_ROLES,
+  awaitingApproval,
   canSendFrom,
   classifyBatches,
   custodyErrorMessage,
@@ -247,6 +248,15 @@ function HeldActions({ batch, roles, recipients, nameOf, busy, send }) {
 
   if (FROZEN_TEXT[status]) {
     return <p className="muted">No custody actions: the batch is {FROZEN_TEXT[status]}.</p>;
+  }
+
+  // Team decision (S4): a batch ships only after a Regulator approves it.
+  if (awaitingApproval(batch)) {
+    return (
+      <p className="muted">
+        Waiting for Regulator approval. The batch can be sent once a Regulator approves it.
+      </p>
+    );
   }
 
   const canSend = canSendFrom(status) && nextHopRoles(roles).length > 0;
