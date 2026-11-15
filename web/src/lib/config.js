@@ -55,6 +55,9 @@ export function resolveContractConfig(files, network, overrides = {}) {
       chainId: Number(deployment.chainId ?? netInfo.chainId),
       address,
       abi,
+      // First block worth scanning for events. Public RPCs (Amoy) limit eth_getLogs ranges, so
+      // starting at the deployment block matters there; 0 is fine on a local node.
+      deployBlock: Number(deployment.blockNumber ?? 0),
       rpcUrl,
       explorer: netInfo.explorer,
       currency: netInfo.currency,
@@ -68,6 +71,7 @@ export function resolveContractConfig(files, network, overrides = {}) {
     chainId: netInfo.chainId,
     address: null,
     abi: mockConfig.abi,
+    deployBlock: 0,
     rpcUrl,
     explorer: netInfo.explorer,
     currency: netInfo.currency,
