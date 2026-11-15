@@ -39,8 +39,10 @@ abstract contract CustodyModule is StatusModule {
 
     /// @notice Starts a handoff: the current custodian names the next custodian.
     /// @dev Reverts with UnknownBatch, NotCurrentCustodian, TransferAlreadyPending,
-    ///      InvalidNextHop or InvalidTransition (frozen batch). Sets pendingCustodian, moves
-    ///      the batch to InTransit and emits StatusChanged and CustodyTransferInitiated.
+    ///      InvalidNextHop, InvalidTransition (frozen batch) or NotApproved (first shipment of
+    ///      a batch no Regulator has approved yet; team decision, enforced in _changeStatus).
+    ///      Sets pendingCustodian, moves the batch to InTransit and emits StatusChanged and
+    ///      CustodyTransferInitiated.
     /// @param batchId The batch being handed off.
     /// @param to The next custodian; must accept with acceptTransfer.
     function initiateTransfer(uint256 batchId, address to) external override {

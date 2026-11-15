@@ -166,6 +166,30 @@ describe("CustodyModule", function () {
         .to.be.revertedWithCustomError(tracker, "TransferAlreadyPending")
         .withArgs(batchId, distributor.address);
     });
+
+    it("rejects the first shipment until a Regulator approves the batch", async function () {
+      const { tracker, expiry, manufacturer, distributor, regulator } =
+        await loadFixture(deployCustody);
+      await tracker
+        .connect(manufacturer)
+        .registerBatch("Vaccine", "LOT-002", expiry, ethers.ZeroHash);
+
+      await expect(
+        tracker.connect(manufacturer).initiateTransfer(2n, distributor.address),
+      )
+        .to.be.revertedWithCustomError(tracker, "NotApproved")
+        .withArgs(2n);
+      expect((await tracker.getBatch(2n)).pendingCustodian).to.equal(
+        ethers.ZeroAddress,
+      );
+
+      await tracker
+        .connect(regulator)
+        .approveBatch(2n, ethers.id("cert-LOT-002"));
+      await expect(
+        tracker.connect(manufacturer).initiateTransfer(2n, distributor.address),
+      ).to.emit(tracker, "CustodyTransferInitiated");
+    });
   });
 
   describe("hop table", function () {
