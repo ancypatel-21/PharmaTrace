@@ -32,7 +32,8 @@ export const NETWORKS = {
  *
  * @param {Record<string, any>} files Map of file path -> parsed JSON (from import.meta.glob).
  * @param {string} network Network key, e.g. "localhost" or "amoy".
- * @param {{ rpcUrl?: string }} [overrides]
+ * @param {{ rpcUrl?: string, pageHostname?: string }} [overrides] `pageHostname` is the host
+ *   the app was opened from (window.location.hostname).
  */
 export function resolveContractConfig(files, network, overrides = {}) {
   const byName = {};
@@ -45,7 +46,7 @@ export function resolveContractConfig(files, network, overrides = {}) {
   const deployment = byName[network];
   const abi = deployment?.abi ?? byName.ProvenanceTracker?.abi;
   const address = deployment?.address ?? null;
-  const rpcUrl = overrides.rpcUrl || netInfo.rpcUrl;
+  const rpcUrl = overrides.rpcUrl || defaultRpcUrl(network, netInfo, overrides.pageHostname);
 
   if (deployment && address && Array.isArray(abi)) {
     return {
@@ -78,6 +79,26 @@ export function resolveContractConfig(files, network, overrides = {}) {
   };
 }
 
+/**
+ * On the local node, read from the same machine that served the page. A phone that opens the
+ * verify page from a QR code (http://192.168.x.x:5173/verify/1) then reads from
+ * http://192.168.x.x:8545, instead of 127.0.0.1, which on the phone is the phone itself.
+ * Needs `npx hardhat node --hostname 0.0.0.0` so the node listens on the LAN.
+ */
+function defaultRpcUrl(network, netInfo, pageHostname) {
+  if (network === "localhost" && pageHostname && !isLoopbackHost(pageHostname)) {
+    const host = pageHostname.includes(":") ? `[${pageHostname}]` : pageHostname;
+    return `http://${host}:8545`;
+  }
+  return netInfo.rpcUrl;
+}
+
+/** localhost, 127.x.x.x or ::1: only reachable from this machine. */
+export function isLoopbackHost(hostname) {
+  const h = String(hostname).replace(/^\[|\]$/g, "").toLowerCase();
+  return h === "localhost" || h === "::1" || /^127\./.test(h);
+}
+
 let cached;
 
 /** The contract config for this build (cached). */
@@ -87,6 +108,7 @@ export function getContractConfig() {
     const files = import.meta.glob("../contracts/*.json", { eager: true });
     cached = resolveContractConfig(files, import.meta.env.VITE_NETWORK || "localhost", {
       rpcUrl: import.meta.env.VITE_RPC_URL,
+      pageHostname: typeof window !== "undefined" ? window.location.hostname : undefined,
     });
   }
   return cached;
