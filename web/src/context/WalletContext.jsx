@@ -9,11 +9,14 @@ const WalletContext = createContext(null);
 /**
  * Wallet state shared by every page:
  *   account, walletChainId, wrongNetwork, roles, rolesLoading, error,
- *   connect(), switchNetwork(), getWriteContract(), hasRole(key)
+ *   accounts, accountRoles, selectAccount(address), connect(), switchAccount(), disconnect(), switchNetwork(), getWriteContract(), hasRole(key)
  */
 export function WalletProvider({ children }) {
   const config = useMemo(() => getContractConfig(), []);
   const [account, setAccount] = useState(null);
+  // Every account MetaMask has connected to this site; `account` is the one the app acts as.
+  const [accounts, setAccounts] = useState([]);
+  const [accountRoles, setAccountRoles] = useState({});
   const [walletChainId, setWalletChainId] = useState(null);
   const [roles, setRoles] = useState([]);
   const [rolesLoading, setRolesLoading] = useState(false);
@@ -25,7 +28,10 @@ export function WalletProvider({ children }) {
     if (!walletInstalled) return undefined;
     const { ethereum } = window;
 
-    const onAccounts = (accounts) => setAccount(accounts[0] ?? null);
+    const onAccounts = (list) => {
+      setAccounts(list);
+      setAccount(list[0] ?? null);
+    };
     const onChain = (hexId) => setWalletChainId(Number(hexId));
 
     ethereum.request({ method: "eth_accounts" }).then(onAccounts).catch(() => {});
@@ -66,6 +72,28 @@ export function WalletProvider({ children }) {
     };
   }, [account, config]);
 
+  // Role labels for the in-app account picker: one lookup per connected account.
+  useEffect(() => {
+    let cancelled = false;
+    if (accounts.length < 2) {
+      setAccountRoles({});
+      return undefined;
+    }
+    const provider = config.mock ? undefined : getReadProvider();
+    Promise.all(
+      accounts.map((a) =>
+        detectRoles({ config, account: a, provider })
+          .then((found) => [a.toLowerCase(), found])
+          .catch(() => [a.toLowerCase(), []]),
+      ),
+    ).then((pairs) => {
+      if (!cancelled) setAccountRoles(Object.fromEntries(pairs));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [accounts, config]);
+
   const connect = useCallback(async () => {
     setError(null);
     if (!walletInstalled) {
@@ -73,10 +101,53 @@ export function WalletProvider({ children }) {
       return;
     }
     try {
-      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-      setAccount(accounts[0] ?? null);
+      const list = await window.ethereum.request({ method: "eth_requestAccounts" });
+      setAccounts(list);
+      setAccount(list[0] ?? null);
     } catch (err) {
       setError(err.code === 4001 ? "Connection request was rejected." : err.message);
+    }
+  }, [walletInstalled]);
+
+  /** Opens MetaMask's account picker for this site, so another account can be connected and used. */
+  const switchAccount = useCallback(async () => {
+    setError(null);
+    if (!walletInstalled) return;
+    try {
+      await window.ethereum.request({
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }],
+      });
+      const list = await window.ethereum.request({ method: "eth_accounts" });
+      setAccounts(list);
+      setAccount(list[0] ?? null);
+    } catch (err) {
+      if (err.code !== 4001) setError(err.message);
+    }
+  }, [walletInstalled]);
+
+  /** Acts as another account that MetaMask already has connected to this site. */
+  const selectAccount = useCallback(
+    (address) => {
+      const match = accounts.find((a) => a.toLowerCase() === String(address).toLowerCase());
+      if (match) setAccount(match);
+    },
+    [accounts],
+  );
+
+  /** Logs out: forgets the account here and asks MetaMask to revoke this site's access. */
+  const disconnect = useCallback(async () => {
+    setError(null);
+    setAccount(null);
+    setAccounts([]);
+    if (!walletInstalled) return;
+    try {
+      await window.ethereum.request({
+        method: "wallet_revokePermissions",
+        params: [{ eth_accounts: {} }],
+      });
+    } catch {
+      // Older wallets cannot revoke; the app stays logged out until the next connect.
     }
   }, [walletInstalled]);
 
@@ -121,7 +192,8 @@ export function WalletProvider({ children }) {
     if (walletChainId !== config.chainId) {
       throw new Error(`Switch MetaMask to ${config.networkName} (chain ${config.chainId}).`);
     }
-    const signer = await getBrowserProvider().getSigner();
+    // Sign as the account chosen in the app, not necessarily MetaMask's currently selected one.
+    const signer = await getBrowserProvider().getSigner(account);
     return new Contract(config.address, config.abi, signer);
   }, [account, walletChainId, config]);
 
@@ -130,17 +202,22 @@ export function WalletProvider({ children }) {
       config,
       walletInstalled,
       account,
+      accounts,
+      accountRoles,
+      selectAccount,
       walletChainId,
       wrongNetwork: Boolean(account) && walletChainId !== null && walletChainId !== config.chainId,
       roles,
       rolesLoading,
       error,
       connect,
+      switchAccount,
+      disconnect,
       switchNetwork,
       getWriteContract,
       hasRole: (key) => roles.includes(key),
     }),
-    [config, walletInstalled, account, walletChainId, roles, rolesLoading, error, connect, switchNetwork, getWriteContract],
+    [config, walletInstalled, account, accounts, accountRoles, selectAccount, walletChainId, roles, rolesLoading, error, connect, switchAccount, disconnect, switchNetwork, getWriteContract],
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
