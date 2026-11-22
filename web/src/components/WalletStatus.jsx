@@ -60,10 +60,10 @@ export default function WalletStatus() {
       ) : (
         <span className="badge role-none">No role</span>
       )}
-      <button type="button" className="btn" onClick={switchAccount} title="Pick another MetaMask account">
+      <button type="button" className="btn btn-ghost" onClick={switchAccount} title="Pick another MetaMask account">
         Switch account
       </button>
-      <button type="button" className="btn" onClick={disconnect} title="Log out of this wallet">
+      <button type="button" className="btn btn-ghost" onClick={disconnect} title="Log out of this wallet">
         Disconnect
       </button>
       {wrongNetwork && (
