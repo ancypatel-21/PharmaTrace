@@ -72,12 +72,50 @@ degree Celsius, e.g. 80 = 8.0 °C).
 
 ### Status transitions, quarantine/recall and regulator workflow (Shreyanshi)
 
+Implemented in [`contracts/modules/StatusModule.sol`](contracts/modules/StatusModule.sol) (S2-S4),
+tested in S5, with the Regulator dashboard in S6.
+
+**Public functions**
+
 - `markStored(batchId)` — current custodian moves a `Received` batch to `Stored`.
 - `markDispensed(batchId)` — Pharmacy custodian moves a `Stored` batch to `Dispensed` (terminal).
-- `quarantineBatch(batchId, reason)` / `releaseQuarantine(batchId)` — Regulator-only; quarantine preserves the prior status for release.
-- `recallBatch(batchId, reason)` — Regulator, or the Manufacturer that registered the batch; `Recalled` is terminal.
-- `approveBatch(batchId, certificateHash)` — Regulator-only; anchors the certificate hash and records the approver. A batch must be approved before its first shipment (team vote).
-- Implementation (`StatusModule.sol`) lands in S2-S4; open team-vote questions (approval before first shipment, Manufacturer-initiated recall) are tracked in the S1 PR.
+- `quarantineBatch(batchId, reason)` — Regulator-only, from any non-terminal status; the status held before quarantine is recorded. Emits `BatchQuarantined`.
+- `releaseQuarantine(batchId)` — Regulator-only; restores exactly the recorded previous status. A pending transfer is kept, so a batch quarantined in transit can still be accepted or cancelled afterwards. Emits `QuarantineReleased`.
+- `recallBatch(batchId, reason)` — Regulator, or the Manufacturer that registered the batch (while it still holds the Manufacturer role). Works from any non-terminal status by moving through `Quarantined` in the same transaction; clears any pending transfer. `Recalled` is terminal. Emits `BatchRecalled`.
+- `approveBatch(batchId, certificateHash)` — Regulator-only, one-time; sets `approved`, records the approving Regulator and anchors the certificate hash. Emits `BatchApproved`.
+
+**Shared internal hooks used by the other modules**
+
+- `_changeStatus(batchId, newStatus)` — the single gate for every status change in the system. It checks the transition table above and emits `StatusChanged(batchId, from, to, actor)`. CustodyModule calls it on send, accept and cancel; OracleModule reaches it through `_quarantine`.
+- `_quarantine(batchId, reason)` — called by OracleModule when a temperature report is outside 2-8 °C.
+- `notFrozen(batchId)` modifier — rejects batches that are `Quarantined`, `Recalled` or `Dispensed`.
+
+**Team decisions implemented**
+
+- A batch must be approved by a Regulator before its first shipment: `Created` → `InTransit` reverts with `NotApproved` until `approveBatch` is called.
+- A Manufacturer may recall its own batches; only a Regulator can quarantine or release.
+- A pending transfer can be cancelled, returning the batch only to the status it held before the transfer.
+
+Invalid actions revert with custom errors (`InvalidTransition`, `NotApproved`, `BatchFrozen`,
+`NotQuarantined`, `EmptyReason`, `RecallNotAuthorized`, `AlreadyApproved`, `EmptyCertificateHash`).
+
+**Regulator dashboard** (`/regulator` in the web app, [`web/src/pages/Regulator.jsx`](web/src/pages/Regulator.jsx)):
+connect a wallet with the Regulator role (on a local node, Hardhat account #5 after
+`scripts/seed-roles.js`). It lists every batch with a status filter, highlights quarantined
+batches and temperature excursions, and offers approve (paste a certificate hash or hash a file in
+the browser), quarantine and recall with a reason, and release. Only actions the contract would
+accept are shown.
+
+**Tests**
+
+- [`test/status.test.js`](test/status.test.js) — every from/to pair of the transition table (84 pairs), the approval gate, recorded previous statuses, `notFrozen`, `markStored` and `markDispensed`.
+- [`test/regulator.test.js`](test/regulator.test.js) — quarantine, release, recall and approval on the real contract, manufacturer recall, and role checks for every regulator action.
+- [`web/src/lib/regulator.test.js`](web/src/lib/regulator.test.js) — dashboard logic: filters, sorting, available actions per status, input checks and error messages.
+
+```bash
+npx hardhat test test/status.test.js test/regulator.test.js
+cd web && npx vitest run src/lib/regulator.test.js
+```
 
 ### Custody transfers and provenance history (Nandana)
 
