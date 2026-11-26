@@ -134,10 +134,57 @@ cd web && npx vitest run src/lib/regulator.test.js
 
 ### Public verification UI and system integration (Vigneshkumar)
 
-- `getBatchSummary(batchId)` — one-call aggregate (exists flag, batch, latest temperature, report count, approver) for the public verify page; does not revert on unknown IDs.
-- `getLatestTemperature(batchId)` — latest temperature summary and report count.
-- What the verify page reads and how it's displayed: [`docs/ui-data.md`](docs/ui-data.md).
-- Implementation (React app, verify page, e2e tests) lands in V2-V6.
+Owns the React web app every role page runs on (V2), the public verify page (V3), batch QR codes
+(V4), the end-to-end tests (V5) and the one-command local demo (V6).
+
+**Public verification reads** (declared in V1, implemented in [`contracts/ProvenanceTracker.sol`](contracts/ProvenanceTracker.sol) and OracleModule)
+
+- `getBatchSummary(batchId)` — everything the verify page needs in one call: `exists`, the `Batch`, the latest `TempSummary`, the temperature report count and the approving Regulator. Returns `exists = false` for unknown IDs instead of reverting, so the page can show "Not found" without catching an error.
+- `getLatestTemperature(batchId)` — latest temperature window and report count.
+- Field-by-field mapping from contract to screen, and the events the UI queries: [`docs/ui-data.md`](docs/ui-data.md).
+
+**Web app** ([`web/`](web/), Vite + React 19 + ethers v6; layout in [`web/README.md`](web/README.md))
+
+- Two connections: a read-only `JsonRpcProvider` (public pages and role detection, no wallet needed) and MetaMask for transactions.
+- Contract config loaded from the `web/src/contracts/<network>.json` file written by `scripts/export-abi.js`, chosen by `VITE_NETWORK` (`localhost` or `amoy`).
+- Role detection with `hasRole` for the six roles plus Admin; `<RequireRole>` shows a clear message when the connected wallet lacks the role a page needs.
+- Routes: `/admin`, `/manufacturer`, `/custody`, `/regulator`, `/verify/:id`, with shared layout, status and role badges.
+
+**Public verify page** (`/verify/:id`, [`web/src/pages/Verify.jsx`](web/src/pages/Verify.jsx))
+
+- No wallet, works on a phone. Shows product, lot, expiry, manufacturer and current holder (with participant names), the Regulator approval badge with the certificate hash, the latest temperature window with an in/out-of-range badge and any excursions, the custody timeline (Nandana's `<CustodyTimeline>`), and approvals, storage, quarantine and recall events.
+- A red banner with the reason for **Quarantined** and **Recalled** batches; warnings for expired and unapproved batches; "Not found" for unknown IDs.
+- Reads `getBatchSummary` plus the batch's events in one `eth_getLogs` call ([`web/src/lib/verify.js`](web/src/lib/verify.js)). If the log query fails, the page still shows everything from `getBatchSummary`.
+
+**Batch QR codes** ([`web/src/components/BatchQR.jsx`](web/src/components/BatchQR.jsx))
+
+- After registering a batch, the Manufacturer page shows a QR code linking to `/verify/<id>`, with copy-link and a print-ready SVG download. Every batch in the Manufacturer's list has one too.
+- Links use `VITE_PUBLIC_URL` if set, otherwise the address the app was opened from. On a local node the verify page reads from the machine that served it, so a phone that scans a QR on the same Wi-Fi reads from the laptop's node (`npm run demo -- --lan`).
+
+**End-to-end journeys** ([`scripts/e2e-journey.js`](scripts/e2e-journey.js), [`test/e2e.test.js`](test/e2e.test.js))
+
+- Happy path: register → approve → Manufacturer→Distributor send + accept → store → normal temperature report → Distributor→Pharmacy send + accept → store → dispense.
+- Excursion path: register → approve → ship to a Carrier → excursion report → automatic quarantine → Regulator recall.
+- Temperature windows come from the simulator's own code, so contract, roles and simulator are tested together. The test also runs the verify page's data layer to confirm it shows the Recalled banner, reason, excursion and quarantine.
+- Run against a local node, the script seeds demo data and prints the gas used per step.
+
+**One-command local demo** ([`scripts/demo.js`](scripts/demo.js), [`docs/demo-runbook.md`](docs/demo-runbook.md))
+
+- `npm run demo` starts a node, deploys, registers the six participants, exports the ABI, seeds batch #1 (Dispensed) and #2 (Recalled) and starts the web app. Ctrl+C stops everything. `--lan` makes it reachable from a phone.
+- The runbook covers MetaMask setup, a demo walkthrough by role, individual commands and troubleshooting.
+
+**Tests**
+
+- [`test/e2e.test.js`](test/e2e.test.js) — both journeys on the real contract (10 tests).
+- [`web/src/lib/verify.test.js`](web/src/lib/verify.test.js) — batch ID parsing, event-to-activity mapping, warnings and temperature state (14 tests).
+- [`web/src/lib/qr.test.js`](web/src/lib/qr.test.js) — QR deep links, localhost detection, phone RPC host (6 tests).
+- [`web/src/lib/lib.test.js`](web/src/lib/lib.test.js) — contract config loading, role ids and detection, formatting (9 tests).
+
+```bash
+npm run test:e2e        # end-to-end journeys
+npm run test:web        # all web app unit tests
+npm run test:all        # contracts + simulator + web
+```
 
 ## Dependencies
 
@@ -204,5 +251,6 @@ changes. The same three scripts work against `amoy` once `AMOY_RPC_URL` and
 `DEPLOYER_PRIVATE_KEY` are set in `.env` (fund that wallet from the Amoy faucet first) and
 `deployments/demo-accounts.json` has real participant addresses filled in.
 
-Deployment to Polygon Amoy, the React web app, and the Node.js simulator are not implemented yet
-at this draft stage; they land through Phase 1-2 of the work plan (A7-A9, V2-V6, B2-B6).
+The web app and the simulator then read the exported files: `npm run web` (or `cd web && npm run
+dev`) and `npm run sim -- --batch <id> --scenario normal`. `npm run demo` does all of the above in
+one command; see [`docs/demo-runbook.md`](docs/demo-runbook.md).
