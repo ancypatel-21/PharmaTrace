@@ -7,7 +7,7 @@ const NAV = [
   { to: "/verify", label: "Verify" },
   { to: "/admin", label: "Admin", role: "ADMIN" },
   { to: "/manufacturer", label: "Manufacturer", role: "MANUFACTURER" },
-  { to: "/custody", label: "Custody", role: ["DISTRIBUTOR", "CARRIER", "PHARMACY"] },
+  { to: "/custody", label: "Custody", role: ["MANUFACTURER", "DISTRIBUTOR", "CARRIER", "PHARMACY"] },
   { to: "/regulator", label: "Regulator", role: "REGULATOR" },
 ];
 

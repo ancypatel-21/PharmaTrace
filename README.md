@@ -153,6 +153,18 @@ versions from [`package-lock.json`](package-lock.json). The web app (`web/`) and
 
 ## How to run
 
+### Quick start: one-command local demo
+
+```bash
+npm run setup   # install root and web/ dependencies (first time only)
+npm run demo    # local node + deploy + roles + demo batches + web app at http://localhost:5173
+```
+
+See [`docs/demo-runbook.md`](docs/demo-runbook.md) for MetaMask setup, the demo walkthrough,
+phone/QR scanning (`npm run demo -- --lan`) and troubleshooting.
+
+### Step by step
+
 ```bash
 # install dependencies
 npm install
