@@ -65,10 +65,74 @@ degree Celsius, e.g. 80 = 8.0 °C).
 
 ### Roles, registration, access control and deployment (Ancy)
 
-- `registerParticipant(account, role, name)` / `revokeParticipant(account)` — admin-only role grants for the six participant roles (Manufacturer, Distributor, Carrier, Pharmacy, Regulator, Oracle).
-- `registerBatch(productName, lotNumber, expiryDate, certificateHash)` — Manufacturer-only; returns a unique `batchId`.
-- `getBatch(batchId)`, `batchExists(batchId)`, `totalBatches()` — reads.
-- Implementation (`AccessRoles.sol`, `BatchRegistry.sol`), deploy scripts, and ABI export land in A4-A7.
+Implemented in [`contracts/modules/AccessRoles.sol`](contracts/modules/AccessRoles.sol) and
+[`contracts/modules/BatchRegistry.sol`](contracts/modules/BatchRegistry.sol), tested in
+[`test/roles.test.js`](test/roles.test.js) and [`test/registration.test.js`](test/registration.test.js),
+with the admin and manufacturer pages at `/admin` and `/manufacturer` in the web app.
+
+**Access control**
+
+Six participant roles (`MANUFACTURER_ROLE`, `DISTRIBUTOR_ROLE`, `CARRIER_ROLE`, `PHARMACY_ROLE`,
+`REGULATOR_ROLE`, `ORACLE_ROLE`) built on OpenZeppelin's `AccessControl`, plus `DEFAULT_ADMIN_ROLE`
+for the deploying account. Every other module gates its functions with `onlyRole(...)` against
+these same constants, so access control lives in exactly one place.
+
+- `registerParticipant(account, role, name)` — admin-only; rejects the zero address, a role that
+  isn't one of the six (so `DEFAULT_ADMIN_ROLE` itself can never be handed out through this
+  function), and a duplicate grant. Stores a display name so the UI can show "CityCare Pharmacy"
+  instead of an address. Emits `ParticipantRegistered`.
+- `revokeParticipant(account)` — admin-only; revokes every participant role the account holds (the
+  interface takes no role argument) and clears its name. Reverts if the account holds none.
+- `participantName(account)` — read; not part of the frozen interface, added as a small
+  convenience so the UI never has to re-scan events just to show a name.
+
+**Batch registration**
+
+- `registerBatch(productName, lotNumber, expiryDate, certificateHash)` — Manufacturer-only;
+  returns an auto-incrementing `batchId` starting at 1. Rejects empty fields, an expiry date that
+  isn't strictly in the future, and a lot number already used by the same manufacturer (lot
+  numbers are unique per manufacturer, not globally — two different manufacturers may reuse the
+  same lot number). The new batch starts as `Status.Created`, with the manufacturer as its
+  current custodian and nothing pending. Emits `BatchRegistered`.
+- `getBatch(batchId)`, `batchExists(batchId)`, `totalBatches()` — reads; `getBatch` reverts with
+  `UnknownBatch` for an unregistered ID.
+
+Invalid actions revert with custom errors (`InvalidParticipantRole`, `AlreadyRegistered`,
+`NotRegistered`, `ZeroAddress`, `EmptyField`, `ExpiryInPast`, `DuplicateLot`, `UnknownBatch`)
+instead of revert strings, which is both clearer for the caller and cheaper in gas.
+
+**Admin and Manufacturer pages** ([`web/src/pages/Admin.jsx`](web/src/pages/Admin.jsx),
+[`web/src/pages/Manufacturer.jsx`](web/src/pages/Manufacturer.jsx)): the Admin page registers and
+revokes participants and lists everyone currently registered, read from `ParticipantRegistered`
+events and cross-checked live against `hasRole`. The Manufacturer page registers a batch, shows
+its ID and QR code once the transaction is mined, and lists the batches that account has already
+registered.
+
+**Deployment**
+
+`scripts/deploy.js` deploys the contract and writes `deployments/<network>.json` (address, chain
+ID, deployer, block, transaction hash). `scripts/seed-roles.js` grants the six roles to demo
+accounts — the next six default signers on `localhost`/`hardhat` automatically, or public
+addresses from `deployments/demo-accounts.json` on any other network (see
+[`deployments/README.md`](deployments/README.md)). `scripts/export-abi.js` copies the deployed
+address and ABI into `web/src/contracts/` and `simulator/config/`, in the format
+[`web/src/lib/config.js`](web/src/lib/config.js) expects.
+
+**Live on Polygon Amoy:** deployed and verified at
+[`0x265D2838168F3E6B147E25a424411C7106e853A4`](https://amoy.polygonscan.com/address/0x265D2838168F3E6B147E25a424411C7106e853A4#code)
+(chain ID 80002). Source is verified on Polygonscan, so anyone can read every function and read
+the exact deployed bytecode without trusting this README.
+
+**Gas and scalability:** [`docs/gas-report.md`](docs/gas-report.md) — per-function gas from the
+full test suite, the actual cost of this Amoy deployment, a cost comparison against Polygon PoS
+mainnet and Ethereum mainnet, and the storage-vs-events design trade-off behind these numbers.
+
+**Tests**
+
+```bash
+npx hardhat test test/roles.test.js test/registration.test.js
+cd web && npx vitest run src/lib/admin.test.js
+```
 
 ### Status transitions, quarantine/recall and regulator workflow (Shreyanshi)
 
@@ -189,8 +253,20 @@ npx hardhat run scripts/export-abi.js --network localhost
 
 Re-run `export-abi.js` for the current network any time a contract function or event signature
 changes. The same three scripts work against `amoy` once `AMOY_RPC_URL` and
-`DEPLOYER_PRIVATE_KEY` are set in `.env` (fund that wallet from the Amoy faucet first) and
-`deployments/demo-accounts.json` has real participant addresses filled in.
+`DEPLOYER_PRIVATE_KEY` are set in `.env` (fund that wallet from the [Amoy
+faucet](https://faucet.polygon.technology/) first) and `deployments/demo-accounts.json` has real
+participant addresses filled in:
 
-Deployment to Polygon Amoy, the React web app, and the Node.js simulator are not implemented yet
-at this draft stage; they land through Phase 1-2 of the work plan (A7-A9, V2-V6, B2-B6).
+```bash
+npx hardhat run scripts/deploy.js --network amoy
+npx hardhat run scripts/seed-roles.js --network amoy
+npx hardhat run scripts/export-abi.js --network amoy
+npx hardhat verify --network amoy <deployed address>
+```
+
+The contract is already live on Amoy at
+[`0x265D2838168F3E6B147E25a424411C7106e853A4`](https://amoy.polygonscan.com/address/0x265D2838168F3E6B147E25a424411C7106e853A4#code)
+(see `deployments/amoy.json`); re-deploying creates a second, separate instance.
+
+For running the web app (`web/`) and the simulator (`simulator/`), see each one's own
+`package.json` and `.env.example`.

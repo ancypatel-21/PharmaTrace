@@ -26,9 +26,8 @@ module.exports = {
     },
   },
   etherscan: {
-    apiKey: {
-      polygonAmoy: POLYGONSCAN_API_KEY || "",
-    },
+    // Etherscan V2: a single API key works across every supported chain, selected by chainId.
+    apiKey: POLYGONSCAN_API_KEY || "",
   },
   gasReporter: {
     enabled: true,
